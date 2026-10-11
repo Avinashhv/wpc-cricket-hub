@@ -44,6 +44,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.6}}
 .badge-inv-upcoming{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)}
 .badge-inv-completed{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.badge-inv-live{background:#e53935;color:#fff;animation:livepulse 1.4s infinite}
 .card-time{font-size:12px;color:#666}
 
 .card-teams{padding:10px 14px 6px}
@@ -176,6 +177,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .status-col-hdr{font-size:10px;font-weight:800;color:#999;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
 /* ── Coming soon ── */
 .coming-soon{padding:48px 20px;text-align:center;color:#bbb;font-size:14px}
+
+/* ── Live panel in hub ── */
+.live-panel{background:#0d2b1a;color:#fff;border-radius:12px;margin:12px 0;padding:16px}
+.live-hdr{display:flex;align-items:center;margin-bottom:8px}
+.live-score{font-size:40px;font-weight:900;letter-spacing:-1px;line-height:1}
+.live-batrow{display:flex;gap:8px;margin-top:10px}
+.live-bat{flex:1;background:rgba(255,255,255,.08);border-radius:8px;padding:8px 10px}
+.live-bat-strike{background:rgba(245,166,35,.18);border:1px solid rgba(245,166,35,.5)}
+.live-batname{font-size:14px;font-weight:800;display:block}
+.live-batstat{font-size:12px;opacity:.6;display:block;margin-top:2px}
+.live-bowrow{margin-top:10px;font-size:13px;font-weight:700;opacity:.85}
+.live-balls{display:flex;flex-wrap:wrap;gap:5px}
+.lb-dot{background:rgba(255,255,255,.15);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.lb-run{background:rgba(255,255,255,.25);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.lb-bnd{background:#1a5e36;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.lb-w{background:#e53935;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
 
 .pb{padding-bottom:60px}
 .loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:12px;color:#1a5e36}
@@ -427,12 +444,14 @@ function hDetail(mid){
   var t1DetailScore=t1Inn&&t2Inn?t1Inn.total+t2Inn.bonus:0;
   var t2DetailScore=t1Inn&&t2Inn?t2Inn.total+t1Inn.bonus:0;
   var detailWinner=t2DetailScore>t1DetailScore?m.t2.name:m.t1.name;
-  var resultStr=hasInn&&t1Inn&&t2Inn
+  var resultStr=m.status==='live'
+    ? 'In Progress'
+    : hasInn&&t1Inn&&t2Inn
     ? detailWinner+' won ('+Math.max(t1DetailScore,t2DetailScore)+' vs '+Math.min(t1DetailScore,t2DetailScore)+')'
     : m.datetime;
 
   var toggleHtml='';
-  if(S.tab==='summary' && hasInn){
+  if(S.tab==='summary' && hasInn && m.status!=='live'){
     toggleHtml=
       '<div class="inn-toggle">'+
         '<span class="inn-toggle-lbl">INNINGS</span>'+
@@ -443,7 +462,10 @@ function hDetail(mid){
 
   var bodyHtml='';
   if(S.tab==='summary'){
-    if(hasInn){
+    if(m.status==='live'){
+      bodyHtml=hLiveStatus(m);
+      if(hasInn) bodyHtml+=hScorecard(m.innings[0]);
+    } else if(hasInn){
       bodyHtml=hScorecard(m.innings[S.inn]);
     } else {
       bodyHtml='<div class="coming-soon">Match not yet played</div>'+hMatchInfo(m);
@@ -543,6 +565,52 @@ function hScorecard(inn){
         '<tr><th>BOWLER</th><th>O</th><th>R</th><th>W</th><th>ECON</th></tr>'+
         bowlRows+
       '</table>'+
+    '</div>'
+  );
+}
+
+function hLiveStatus(m){
+  var liveInn=m.innings[m.innings.length-1];
+  if(!liveInn)return '';
+  var ss=liveInn.scorerState;
+  if(!ss)return '<div class="live-panel"><div class="live-hdr"><span class="badge badge-inv-live">● LIVE</span></div><div class="live-score">'+liveInn.total+'/'+liveInn.wkts+'</div><div style="margin-top:6px;opacity:.6;font-size:13px">'+liveInn.overs+' overs</div></div>';
+  var balls=ss.balls||[];
+  var curOvNum=balls.length?Math.floor((balls.length-1)/6):0;
+  var curOvBalls=balls.filter(function(b){return b.ov===curOvNum;});
+  var last10=balls.slice(-10);
+  function ballHtml(b){
+    var label=b.isWkt?'W':b.type;
+    var cls=b.isWkt?'lb-w':(b.type==='4'||b.type==='6')?'lb-bnd':(b.type==='.')?'lb-dot':'lb-run';
+    return '<span class="'+cls+'">'+label+'</span>';
+  }
+  var bsOn=(ss.bs&&ss.bs[ss.batOn])||{r:0,b:0,re:0};
+  var bsOff=(ss.bs&&ss.bs[ss.batOff])||{r:0,b:0,re:0};
+  var bowler=ss.bowler||'–';
+  var bw=(ss.bws&&ss.bws[bowler])||{r:0,balls:0,w:0};
+  var bowOv=Math.floor((bw.balls||0)/6)+'.'+(bw.balls||0)%6;
+  return (
+    '<div class="live-panel">'+
+      '<div class="live-hdr"><span class="badge badge-inv-live">● LIVE</span><span style="font-size:13px;font-weight:800;margin-left:8px">'+liveInn.bat+' batting</span></div>'+
+      '<div class="live-score">'+liveInn.total+'/'+liveInn.wkts+'<span style="font-size:14px;font-weight:700;opacity:.6;margin-left:8px">'+liveInn.overs+' ov</span></div>'+
+      '<div class="live-batrow">'+
+        '<div class="live-bat live-bat-strike">'+
+          '<span class="live-batname">'+ss.batOn+' ✱</span>'+
+          '<span class="live-batstat">'+bsOn.r+' ('+bsOn.b+'b)</span>'+
+        '</div>'+
+        '<div class="live-bat">'+
+          '<span class="live-batname">'+ss.batOff+'</span>'+
+          '<span class="live-batstat">'+bsOff.r+' ('+bsOff.b+'b)</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="live-bowrow">⬤ '+bowler+' &nbsp;'+bowOv+' ov &bull; '+bw.r+'r &bull; '+bw.w+'w</div>'+
+      '<div style="margin-top:10px">'+
+        '<div style="font-size:11px;opacity:.5;font-weight:800;letter-spacing:.5px;margin-bottom:6px">THIS OVER</div>'+
+        '<div class="live-balls">'+(curOvBalls.length?curOvBalls.map(ballHtml).join(''):'<span style="opacity:.3;font-size:13px">· · · · · ·</span>')+'</div>'+
+      '</div>'+
+      '<div style="margin-top:10px">'+
+        '<div style="font-size:11px;opacity:.5;font-weight:800;letter-spacing:.5px;margin-bottom:6px">LAST 10 BALLS</div>'+
+        '<div class="live-balls">'+(last10.length?last10.map(ballHtml).join(''):'<span style="opacity:.3;font-size:13px">No balls yet</span>')+'</div>'+
+      '</div>'+
     '</div>'
   );
 }

@@ -643,6 +643,10 @@ function rScoring(){
     ballBtns+
     (!inningsDone&&!S.retirePending?
       '<button class="btn btn-dim" style="margin-top:4px" onclick="if(confirm(\'End innings early?\'))endInnings()">End Innings</button>':'')+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+      '<button class="btn btn-dim" style="flex:1;font-size:13px" onclick="finishMatchEarly()">⚑ Finish Match</button>'+
+      '<button class="btn btn-dim" style="flex:1;font-size:13px;color:#ffaaaa" onclick="abandonMatch()">✕ Abandon</button>'+
+    '</div>'+
   '</div>'+
   wktModal);
 }
@@ -901,7 +905,33 @@ function rEndInnings(){
       '<div class="sum-row"><span>'+inn.bat+' score</span><span style="font-weight:800">'+inn.total+' + '+bonus+' = '+(inn.total+bonus)+'</span></div>'+
       '<div class="sum-row"><span>'+inn.bowl+' need</span><span style="font-weight:800;color:#f5a623">'+(inn.total+bonus+1)+' to win</span></div>'+
       '<button class="btn btn-gold" onclick="startInn2()">Start Innings 2 →</button>'+
+      '<button class="btn btn-dim" style="margin-top:8px;color:#ffaaaa" onclick="abandonMatch()">✕ Abandon Match</button>'+
     '</div>');
+}
+
+async function finishMatchEarly(){
+  if(!confirm('Finish match with current scores?')) return;
+  if(S.innNum===2){
+    endInnings();
+  } else {
+    saveToDB(async function(){
+      await queueMatchUpdate({status:'completed',result:S.batTeam+' – Inn 2 not played'});
+      S.screen='matches';loadMatches();
+    });
+  }
+}
+
+async function abandonMatch(){
+  var reason=prompt('Reason for abandonment:');
+  if(reason===null)return;
+  if(!reason.trim())reason='Not stated';
+  saveToDB(async function(){
+    if(S.match&&S.match.id){
+      await db.from('match_docs').insert({match_id:S.match.id,name:'Match Abandoned',description:reason,type:'note',file_url:null});
+    }
+    await queueMatchUpdate({status:'completed',result:'Match Abandoned – '+reason});
+    S.screen='matches';loadMatches();
+  });
 }
 
 function startInn2(){
@@ -924,28 +954,29 @@ function startInn2(){
 // FINALIZE MATCH
 // ─────────────────────────────────────────────
 async function finalizeMatch(){
-  var bonus=S.wkts*WKT_BONUS;
+  var inn2BowlingBonus=S.wkts*WKT_BONUS;  // bowling bonus EARNED BY inn1 team (they bowled inn2)
+  var inn1BowlingBonus=S.inn1.bonus;       // bowling bonus EARNED BY inn2 team (they bowled inn1)
   var inn1=S.inn1;
-  var inn2Score=S.total+bonus;
-  var inn1Score=inn1.total+inn1.bonus;
-  var winner=inn2Score>inn1Score?S.batTeam:inn1.bat;
-  var result=winner+' won ('+Math.max(inn1Score,inn2Score)+' vs '+Math.min(inn1Score,inn2Score)+')';
+  var inn1TeamScore=inn1.total+inn2BowlingBonus;  // inn1 batting + inn1 bowling bonus
+  var inn2TeamScore=S.total+inn1BowlingBonus;     // inn2 batting + inn2 bowling bonus
+  var winner=inn2TeamScore>inn1TeamScore?S.batTeam:inn1.bat;
+  var result=winner+' won ('+Math.max(inn1TeamScore,inn2TeamScore)+' vs '+Math.min(inn1TeamScore,inn2TeamScore)+')';
 
   await queueMatchUpdate({status:'completed',result:result});
-  S.inn2Summary={total:S.total,wkts:S.wkts,bonus:bonus,score:inn2Score};
+  S.inn2Summary={total:S.total,wkts:S.wkts,bonus:inn2BowlingBonus,score:inn2TeamScore};
   S.screen='done';r();
 }
 
 function rDone(){
   var inn1=S.inn1;
-  var inn2=S.inn2Summary||{total:S.total,wkts:S.wkts,bonus:S.wkts*WKT_BONUS,score:S.total+S.wkts*WKT_BONUS};
-  var winner=inn2.score>inn1.total+inn1.bonus?S.batTeam:inn1.bat;
+  var inn2=S.inn2Summary||{total:S.total,wkts:S.wkts,bonus:S.wkts*WKT_BONUS,score:S.total+inn1.bonus};
+  var winner=inn2.score>inn1.total+(inn2.bonus||0)?S.batTeam:inn1.bat;
   set('<div class="hdr"><div class="hdr-title">Match Complete</div><a class="hdr-hub" href="index.html">⌂ Hub</a></div>'+
     '<div class="scr">'+
       '<div class="sbanner" style="background:#c17f00">'+
         '<div style="font-size:22px;font-weight:900">'+winner+' won!</div>'+
-        '<div style="margin-top:8px;opacity:.9">'+inn1.bat+': '+inn1.total+'/'+inn1.wkts+' (+'+inn1.bonus+') = '+(inn1.total+inn1.bonus)+'</div>'+
-        '<div style="opacity:.9">'+S.batTeam+': '+inn2.total+'/'+inn2.wkts+' (+'+inn2.bonus+') = '+inn2.score+'</div>'+
+        '<div style="margin-top:8px;opacity:.9">'+inn1.bat+': '+inn1.total+'/'+inn1.wkts+' (+'+inn2.bonus+') = '+(inn1.total+(inn2.bonus||0))+'</div>'+
+        '<div style="opacity:.9">'+S.batTeam+': '+inn2.total+'/'+inn2.wkts+' (+'+inn1.bonus+') = '+inn2.score+'</div>'+
       '</div>'+
       '<div style="text-align:center;padding:20px;opacity:.5;font-size:13px">Full scorecard now live in the hub</div>'+
       '<button class="btn btn-dim" onclick="S.screen=\'matches\';loadMatches()">← Back to Matches</button>'+
