@@ -339,9 +339,38 @@ async function saveNewMatch(){
   S.showAddMatch=false;
   loadMatches();
 }
-function pickMatch(id){
+async function pickMatch(id){
   S.match=S.matches.find(function(m){return m.id===id;});
   if(!S.match)return;
+  // For live matches, check Supabase for a resumable innings
+  if(S.match.status==='live'){
+    set('<div class="hdr"><div class="hdr-title">Loading…</div></div><div class="scr" style="padding:30px;text-align:center;opacity:.5">Checking live innings…</div>');
+    var res=await db.from('innings').select('*').eq('match_id',id).order('innings_num',{ascending:false}).limit(1);
+    if(!res.error&&res.data&&res.data.length){
+      var inn=res.data[0];
+      var st=inn.scorer_state;
+      if(st&&st.balls&&st.balls.length>0){
+        var ballCount=st.balls.length;
+        var ov=Math.floor(ballCount/6)+'.'+ballCount%6;
+        if(confirm('Resume scoring from over '+ov+', score '+inn.total+'/'+inn.wkts+'?')){
+          S.innId=inn.id;
+          S.innNum=inn.innings_num;
+          S.balls=st.balls;
+          S.total=inn.total; S.wkts=inn.wkts;
+          S.exW=st.exW||0; S.exB=st.exB||0; S.exNB=st.exNB||0;
+          S.batOn=st.batOn; S.batOff=st.batOff;
+          S.bowler=st.bowler; S.prevBowler=st.prevBowler||'';
+          S.batNextIdx=st.batNextIdx||0;
+          S.batOrder=st.batOrder||[]; S.bowlOrder=st.bowlOrder||[];
+          S.batTeam=st.batTeam||''; S.bowlTeam=st.bowlTeam||'';
+          S.bs=st.bs||{}; S.bws=st.bws||{};
+          S.wktRuns=st.wktRuns||0; S.inn1=st.inn1||null;
+          S.retirePending=false; S.endOverPending=false; S.showWkt=false;
+          S.screen='scoring'; r(); return;
+        }
+      }
+    }
+  }
   S.sz={step:0,batFirstIdx:-1,batTxt:'',bowlTxt:''};
   S.innNum=1;
   S.screen='setup';
@@ -894,7 +923,16 @@ function saveToDB(cb){
     extras:extras,bonus:S.wkts*WKT_BONUS,
     batters:buildBatters(),
     bowlers:buildBowlers(),
-    scorer_state:{batOn:S.batOn,batOff:S.batOff,bowler:S.bowler,batNextIdx:S.batNextIdx,balls:S.balls}
+    scorer_state:{
+      batOn:S.batOn,batOff:S.batOff,bowler:S.bowler,prevBowler:S.prevBowler,
+      batNextIdx:S.batNextIdx,balls:S.balls,
+      batOrder:S.batOrder,bowlOrder:S.bowlOrder,
+      bs:S.bs,bws:S.bws,
+      exW:S.exW,exB:S.exB,exNB:S.exNB,
+      wktRuns:S.wktRuns,innNum:S.innNum,
+      batTeam:S.batTeam,bowlTeam:S.bowlTeam,
+      inn1:S.inn1
+    }
   };
   // Always persist locally so we can recover after network loss
   try{localStorage.setItem('wpc-inn-q',JSON.stringify({innId:S.innId,payload:payload}));}catch(e){}
