@@ -115,6 +115,7 @@ select.inp option{background:#1a4a2a;color:#fff}
 </head>
 <body>
 <div id="app"></div>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.js"></script>
 <script>
 var SUPA_URL='https://xmnmwnfmmopsxhihmyyg.supabase.co';
@@ -151,6 +152,7 @@ var S={
   pin:'',
   matches:[],
   match:null,
+  offline:!navigator.onLine,
 
   // Innings
   innNum:1,
@@ -400,11 +402,12 @@ function rSetup(){
     var batOpts=batList.map(function(n){return '<option>'+n+'</option>';}).join('');
     var bowlOpts=bowlList.map(function(n){return '<option>'+n+'</option>';}).join('');
     set(hdr+'<div class="scr">'+
-      '<div><div class="lbl">Batter on Strike</div><select class="inp" id="s-on">'+batOpts+'</select></div>'+
-      '<div><div class="lbl">Non-Striker</div><select class="inp" id="s-off">'+batOpts.replace('<option>'+batList[0]+'</option>','<option disabled>'+batList[0]+'</option>').replace('<option>'+batList[1]+'</option>','<option selected>'+batList[1]+'</option>')+'</select></div>'+
+      '<div><div class="lbl">Batter on Strike</div><select class="inp" id="s-on" onchange="syncBatterSelects()">'+batOpts+'</select></div>'+
+      '<div><div class="lbl">Non-Striker</div><select class="inp" id="s-off" onchange="syncBatterSelects()">'+batOpts+'</select></div>'+
       '<div><div class="lbl">Opening Bowler</div><select class="inp" id="s-bowl">'+bowlOpts+'</select></div>'+
       '<button class="btn btn-gold" onclick="startInnings()">🏏 Start Innings '+S.innNum+'</button>'+
     '</div>');
+    syncBatterSelects();
   }
 }
 function setupSaveOrders(){
@@ -416,6 +419,23 @@ function setupSaveOrders(){
   if(batList.length<2){alert('Enter at least 2 batters');return;}
   if(bowlList.length<1){alert('Enter at least 1 bowler');return;}
   S.sz.step=2;r();
+}
+function syncBatterSelects(){
+  var on=document.getElementById('s-on');
+  var off=document.getElementById('s-off');
+  if(!on||!off)return;
+  // Re-enable all in both
+  Array.from(on.options).forEach(function(o){o.disabled=false;});
+  Array.from(off.options).forEach(function(o){o.disabled=false;});
+  // Disable striker's name in non-striker list and vice versa
+  Array.from(off.options).forEach(function(o){if(o.value===on.value||o.text===on.value)o.disabled=true;});
+  Array.from(on.options).forEach(function(o){if(o.value===off.value||o.text===off.value)o.disabled=true;});
+  // If non-striker is same as striker, move to first available
+  if(off.value===on.value||off.options[off.selectedIndex].disabled){
+    for(var i=0;i<off.options.length;i++){
+      if(!off.options[i].disabled){off.selectedIndex=i;break;}
+    }
+  }
 }
 async function startInnings(){
   var sz=S.sz;
@@ -446,7 +466,7 @@ async function startInnings(){
   bowlList.forEach(function(n){S.bws[n]={balls:0,r:0,w:0};});
 
   // Update match to live
-  await db.from('matches').update({status:'live'}).eq('id',S.match.id);
+  await queueMatchUpdate({status:'live'});
 
   // Create innings row
   var res=await db.from('innings').insert({
@@ -550,7 +570,9 @@ function rScoring(){
   set('<div class="hdr">'+
     '<span class="hdr-back" onclick="if(confirm(\'Leave scoring? Progress is saved.\'))backToMatches()">←</span>'+
     '<div class="hdr-title">'+S.batTeam+' batting</div>'+
-    '<span class="hdr-save">'+(S.saving?'saving…':'')+'</span>'+
+    '<span class="hdr-save" style="'+(S.offline?'color:#ff7070':'')+'">'+
+      (S.saving?'saving…':S.offline?'● offline':'')+
+    '</span>'+
     '<a class="hdr-hub" href="index.html" onclick="return confirm(\'Go to Hub? Scoring progress is saved.\')">⌂ Hub</a>'+
   '</div>'+
   '<div class="scr">'+
@@ -824,7 +846,7 @@ async function finalizeMatch(){
   var winner=inn2Score>inn1Score?S.batTeam:inn1.bat;
   var result=winner+' won ('+Math.max(inn1Score,inn2Score)+' vs '+Math.min(inn1Score,inn2Score)+')';
 
-  await db.from('matches').update({status:'completed',result:result}).eq('id',S.match.id);
+  await queueMatchUpdate({status:'completed',result:result});
   S.inn2Summary={total:S.total,wkts:S.wkts,bonus:bonus,score:inn2Score};
   S.screen='done';r();
 }
@@ -866,17 +888,64 @@ function saveToDB(cb){
   if(!S.innId){if(cb)cb();return;}
   S.saving=true;
   var extras={w:S.exW,b:S.exB,lb:0,nb:S.exNB,tot:S.exW+S.exB+S.exNB};
-  db.from('innings').update({
+  var payload={
     total:S.total,wkts:S.wkts,overs:oversStr(S.balls.length),
     extras:extras,bonus:S.wkts*WKT_BONUS,
     batters:buildBatters(),
     bowlers:buildBowlers(),
     scorer_state:{batOn:S.batOn,batOff:S.batOff,bowler:S.bowler,batNextIdx:S.batNextIdx,balls:S.balls}
-  }).eq('id',S.innId).then(function(res){
+  };
+  // Always persist locally so we can recover after network loss
+  try{localStorage.setItem('wpc-inn-q',JSON.stringify({innId:S.innId,payload:payload}));}catch(e){}
+  if(!navigator.onLine){
+    S.saving=false; S.offline=true; r(); if(cb)cb(); return;
+  }
+  db.from('innings').update(payload).eq('id',S.innId).then(function(res){
     S.saving=false;
-    if(res.error)console.error('save error',res.error);
+    if(res.error){console.error('save error',res.error);}
+    else{try{localStorage.removeItem('wpc-inn-q');}catch(e){}}
     if(cb)cb();
   });
+}
+
+// ─── Offline queue drain ───────────────────────
+async function drainQueue(){
+  S.offline=false;
+  // Innings pending
+  try{
+    var iq=JSON.parse(localStorage.getItem('wpc-inn-q')||'null');
+    if(iq){
+      var res=await db.from('innings').update(iq.payload).eq('id',iq.innId);
+      if(!res.error)localStorage.removeItem('wpc-inn-q');
+    }
+  }catch(e){}
+  // Match status pending
+  try{
+    var mq=JSON.parse(localStorage.getItem('wpc-match-q')||'[]');
+    var rem=[];
+    for(var i=0;i<mq.length;i++){
+      var res2=await db.from('matches').update(mq[i].payload).eq('id',mq[i].matchId);
+      if(res2.error)rem.push(mq[i]);
+    }
+    localStorage.setItem('wpc-match-q',JSON.stringify(rem));
+  }catch(e){}
+  r();
+}
+window.addEventListener('online',drainQueue);
+window.addEventListener('offline',function(){S.offline=true;r();});
+
+async function queueMatchUpdate(payload){
+  if(navigator.onLine){
+    var res=await db.from('matches').update(payload).eq('id',S.match.id);
+    if(!res.error)return;
+  }
+  try{
+    var q=JSON.parse(localStorage.getItem('wpc-match-q')||'[]');
+    // Replace any existing update for same matchId+status
+    q=q.filter(function(x){return !(x.matchId===S.match.id&&x.payload.status===payload.status);});
+    q.push({matchId:S.match.id,payload:payload});
+    localStorage.setItem('wpc-match-q',JSON.stringify(q));
+  }catch(e){}
 }
 
 r();
