@@ -12,6 +12,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .hdr-back{font-size:22px;cursor:pointer;padding:4px 8px 4px 0}
 .hdr-title{font-size:16px;font-weight:800;flex:1}
 .hdr-save{font-size:11px;opacity:.6}
+.hdr-hub{font-size:11px;font-weight:800;background:#f5a623;color:#1a5e36;padding:5px 10px;border-radius:14px;text-decoration:none;letter-spacing:.3px;white-space:nowrap}
 .scr{padding:14px;display:flex;flex-direction:column;gap:12px;padding-bottom:30px}
 
 /* PIN */
@@ -237,7 +238,7 @@ function pinKey(k){
 // MATCHES
 // ─────────────────────────────────────────────
 function loadMatches(){
-  set('<div class="hdr"><div class="hdr-title">Select Match</div></div>'+
+  set('<div class="hdr"><div class="hdr-title">Select Match</div><a class="hdr-hub" href="index.html">⌂ Hub</a></div>'+
     '<div class="scr"><div style="opacity:.5;text-align:center;padding:30px">Loading…</div></div>');
   db.from('matches').select('*').in('status',['upcoming','live']).order('id')
     .then(function(res){
@@ -304,6 +305,7 @@ function rMatches(){
   set('<div class="hdr">'+
     '<span class="hdr-back" onclick="S.screen=\'pin\';S.pin=\'\';r()">←</span>'+
     '<div class="hdr-title">Select Match</div>'+
+    '<a class="hdr-hub" href="index.html">⌂ Hub</a>'+
   '</div>'+
   '<div class="scr" style="padding-bottom:80px">'+cards+'</div>'+
   '<button class="fab" onclick="S.showAddMatch=true;r()">+</button>'+
@@ -348,6 +350,7 @@ function rSetup(){
   var hdr='<div class="hdr">'+
     '<span class="hdr-back" onclick="S.screen=\'matches\';r()">←</span>'+
     '<div class="hdr-title">Innings '+S.innNum+' Setup</div>'+
+    '<a class="hdr-hub" href="index.html">⌂ Hub</a>'+
   '</div>';
 
   if(sz.step===0){
@@ -532,6 +535,7 @@ function rScoring(){
     '<span class="hdr-back" onclick="if(confirm(\'Leave scoring? Progress is saved.\'))backToMatches()">←</span>'+
     '<div class="hdr-title">'+S.batTeam+' batting</div>'+
     '<span class="hdr-save">'+(S.saving?'saving…':'')+'</span>'+
+    '<a class="hdr-hub" href="index.html" onclick="return confirm(\'Go to Hub? Scoring progress is saved.\')">⌂ Hub</a>'+
   '</div>'+
   '<div class="scr">'+
     '<div class="sbanner">'+
@@ -698,7 +702,7 @@ function rEndOver(){
     '</div>';
   }).join('');
 
-  set('<div class="hdr"><div class="hdr-title">Over '+ovNum+' complete</div></div>'+
+  set('<div class="hdr"><div class="hdr-title">Over '+ovNum+' complete</div><a class="hdr-hub" href="index.html" onclick="return confirm(\'Go to Hub?\')">⌂ Hub</a></div>'+
     '<div class="scr">'+
       '<div class="sbanner">'+
         '<div class="stotal">'+S.total+'/'+S.wkts+'</div>'+
@@ -740,7 +744,7 @@ function endInnings(){
 function rEndInnings(){
   var inn=S.inn1;
   var bonus=inn.bonus;
-  set('<div class="hdr"><div class="hdr-title">Innings 1 Complete</div></div>'+
+  set('<div class="hdr"><div class="hdr-title">Innings 1 Complete</div><a class="hdr-hub" href="index.html" onclick="return confirm(\'Go to Hub?\')">⌂ Hub</a></div>'+
     '<div class="scr">'+
       '<div class="sbanner">'+
         '<div class="stotal">'+inn.total+'/'+inn.wkts+'</div>'+
@@ -786,7 +790,7 @@ function rDone(){
   var inn1=S.inn1;
   var inn2=S.inn2Summary||{total:S.total,wkts:S.wkts,bonus:S.wkts*WKT_BONUS,score:S.total+S.wkts*WKT_BONUS};
   var winner=inn2.score>inn1.total+inn1.bonus?S.batTeam:inn1.bat;
-  set('<div class="hdr"><div class="hdr-title">Match Complete</div></div>'+
+  set('<div class="hdr"><div class="hdr-title">Match Complete</div><a class="hdr-hub" href="index.html">⌂ Hub</a></div>'+
     '<div class="scr">'+
       '<div class="sbanner" style="background:#c17f00">'+
         '<div style="font-size:22px;font-weight:900">'+winner+' won!</div>'+
