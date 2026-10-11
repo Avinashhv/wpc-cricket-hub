@@ -721,7 +721,8 @@ function confirmWkt(){
   }
   var bw=S.bws[S.bowler];
   if(bw){bw.balls++;bw.r+=S.wktRuns;bw.w++;}
-  if(S.wktRuns%2===1){var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;}
+  // Always swap striker on wicket; scorer can tap SWAP ⇄ to correct edge cases
+  var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;
   S.showWkt=false;
   checkAfterBall();
   saveToDB(r);
@@ -752,6 +753,8 @@ function undoBall(){
   S.retirePending=false;S.endOverPending=false;
   var b=S.balls.pop();
   applyBall(b,-1);
+  // applyBall handles odd-run strike rotation; for even-run wickets we need to undo the unconditional wicket swap
+  if(b.isWkt&&b.bat%2===0){var tw=S.batOn;S.batOn=S.batOff;S.batOff=tw;}
   // Fix retired flag
   var bs=S.bs[b.batter];
   if(bs&&bs.b<RETIRE_AT)bs.retired=false;
