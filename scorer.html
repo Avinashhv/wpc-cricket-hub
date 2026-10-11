@@ -424,14 +424,15 @@ function syncBatterSelects(){
   var on=document.getElementById('s-on');
   var off=document.getElementById('s-off');
   if(!on||!off)return;
-  // Re-enable all in both
-  Array.from(on.options).forEach(function(o){o.disabled=false;});
+  // Re-enable all options in non-striker only
   Array.from(off.options).forEach(function(o){o.disabled=false;});
-  // Disable striker's name in non-striker list and vice versa
-  Array.from(off.options).forEach(function(o){if(o.value===on.value||o.text===on.value)o.disabled=true;});
-  Array.from(on.options).forEach(function(o){if(o.value===off.value||o.text===off.value)o.disabled=true;});
-  // If non-striker is same as striker, move to first available
-  if(off.value===on.value||off.options[off.selectedIndex].disabled){
+  // Disable the current striker's name in the non-striker list
+  var strikerVal=on.value;
+  Array.from(off.options).forEach(function(o){
+    if(o.value===strikerVal||o.text===strikerVal)o.disabled=true;
+  });
+  // If non-striker is currently the same as striker, jump to first available
+  if(off.value===strikerVal){
     for(var i=0;i<off.options.length;i++){
       if(!off.options[i].disabled){off.selectedIndex=i;break;}
     }
