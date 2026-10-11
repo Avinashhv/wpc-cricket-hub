@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/scorer", "dest": "/wpc-scorer.html" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}

@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<title>WPC Cricket</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f0f0;color:#222;font-size:14px}
+
+/* ── Header ── */
+.hdr{background:#1a5e36;color:#fff;display:flex;align-items:center;padding:0 14px;height:52px;position:sticky;top:0;z-index:100;gap:12px}
+.hdr-back{font-size:24px;cursor:pointer;line-height:1;padding:4px 4px 4px 0}
+.hdr-title{flex:1;font-size:17px;font-weight:700;text-align:center}
+.hdr-drop{display:flex;align-items:center;gap:5px;font-size:17px;font-weight:700}
+.hdr-drop svg{width:18px;height:18px;fill:#fff;opacity:.85}
+.hdr-share{font-size:20px;opacity:.8;cursor:pointer}
+
+/* ── Tabs ── */
+.tabs{background:#fff;display:flex;border-bottom:1px solid #e0e0e0;position:sticky;top:52px;z-index:99}
+.tab{flex:1;text-align:center;padding:13px 0 11px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#999;cursor:pointer;border-bottom:3px solid transparent;transition:color .15s}
+.tab.on{color:#1a5e36;border-bottom-color:#f5a623}
+
+/* ── List content ── */
+.grade-bar{background:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;margin-bottom:10px}
+.grade-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.grade-name{font-size:14px;font-weight:700}
+.grade-link{color:#1a5e36;font-size:13px;font-weight:700}
+
+.round-hdr{padding:14px 16px 6px;display:flex;justify-content:space-between;align-items:baseline}
+.round-ttl{font-size:16px;font-weight:800}
+.round-dt{font-size:12px;color:#999}
+
+.card{background:#fff;margin-bottom:1px;cursor:pointer;transition:background .1s}
+.card:active{background:#f5f5f5}
+.card-top{padding:10px 14px;border-bottom:1px solid #f2f2f2;display:flex;align-items:center;gap:10px}
+.badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:3px;letter-spacing:.3px;white-space:nowrap}
+.badge-upcoming{background:#e3f2fd;color:#1565c0}
+.badge-completed{background:#e8f5e9;color:#2a7d32}
+.badge-inv-upcoming{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.badge-inv-completed{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.card-time{font-size:12px;color:#666}
+
+.card-teams{padding:10px 14px 6px}
+.team-row{display:flex;align-items:center;gap:12px;padding:5px 0}
+.team-logo{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0;text-align:center;line-height:1.2}
+.logo-sh{background:#c0392b}
+.logo-wpc{background:#1a5e36}
+.logo-bsk{background:#8e44ad}
+.logo-wpcy{background:#d4a017}
+.logo-def{background:#555}
+.team-name{flex:1;font-size:15px;font-weight:600}
+.team-score{text-align:right}
+.tscore{font-size:15px;font-weight:800}
+.tbonus{font-size:10px;color:#888;margin-top:1px}
+.card-venue{padding:6px 14px 12px;font-size:12px;color:#999;border-top:1px solid #f5f5f5}
+.card-result{padding:7px 14px;font-size:12px;font-weight:700;color:#2a7d32;background:#f0fff4;border-top:1px solid #e0f0e0}
+
+/* ── Match banner ── */
+.banner{background:#1a5e36;color:#fff;padding:14px 16px 18px;text-align:center}
+.banner-venue{font-size:11px;opacity:.75;margin-bottom:14px;letter-spacing:.3px}
+.banner-teams{display:flex;justify-content:center;align-items:center;gap:18px}
+.banner-team{display:flex;flex-direction:column;align-items:center;gap:8px}
+.banner-logo{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.3)}
+.banner-name{font-size:11px;font-weight:800;letter-spacing:.5px;text-align:center;max-width:90px;line-height:1.3;opacity:.95}
+.banner-vs{font-size:13px;opacity:.5;padding:0 4px}
+.banner-team-btn{cursor:pointer;border-radius:8px;padding:4px;margin:-4px;transition:background .15s}
+.banner-team-btn:active{background:rgba(255,255,255,.15)}
+.banner-logo-active{border-color:#f5a623;border-width:3px;box-shadow:0 0 0 2px rgba(245,166,35,.4)}
+.banner-name-active{opacity:1;font-weight:800}
+.banner-inn-dot{width:6px;height:6px;border-radius:50%;background:#f5a623;margin:5px auto 0}
+.banner-status{margin-top:12px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.banner-result{font-size:13px;font-weight:700;opacity:.95}
+
+/* ── Innings toggle ── */
+.inn-toggle{background:#fff;padding:12px 16px;border-bottom:1px solid #eee;display:flex;gap:10px;align-items:center}
+.inn-toggle-lbl{font-size:11px;color:#999;font-weight:700;letter-spacing:.4px;margin-right:4px}
+.inn-btn{width:38px;height:38px;border-radius:50%;border:2px solid #1a5e36;font-size:15px;font-weight:800;cursor:pointer;background:#fff;color:#1a5e36;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.inn-btn.on{background:#1a5e36;color:#fff}
+
+/* ── Scorecard ── */
+.sc-block{background:#fff;margin-bottom:1px}
+.sc-hdr{background:#1a5e36;color:#fff;padding:10px 16px;font-size:12px;font-weight:800;letter-spacing:.5px}
+.sc-tbl{width:100%;border-collapse:collapse}
+.sc-tbl th{padding:7px 4px;text-align:right;color:#999;font-size:10px;font-weight:700;letter-spacing:.3px;border-bottom:1px solid #f0f0f0}
+.sc-tbl th:first-child{text-align:left;padding-left:14px}
+.sc-tbl th:last-child{padding-right:14px}
+.sc-tbl td{padding:10px 4px;border-bottom:1px solid #f5f5f5;vertical-align:top}
+.sc-tbl td:first-child{padding-left:14px}
+.sc-tbl td:last-child{padding-right:14px;text-align:right}
+.bat-name{font-weight:700;font-size:14px}
+.bat-dis{font-size:11px;color:#888;margin-top:2px}
+.num{text-align:right;font-size:13px}
+.num-bold{text-align:right;font-size:14px;font-weight:800}
+.sc-extras{padding:10px 14px;font-size:12px;color:#666;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between}
+.sc-total{padding:12px 14px;font-size:14px;font-weight:800;display:flex;justify-content:space-between;border-bottom:2px solid #ddd}
+.sc-bonus{padding:9px 14px;font-size:12px;color:#1a7a3c;background:#f0fff4;font-style:italic;border-bottom:1px solid #e0ede0}
+.sc-gap{height:12px;background:#f0f0f0}
+
+/* ── Match info (upcoming) ── */
+.info-block{background:#fff;padding:0 14px}
+.info-row{padding:12px 0;border-bottom:1px solid #f5f5f5}
+.info-row:last-child{border-bottom:none}
+.info-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.info-val{font-size:14px}
+.info-val-grn{color:#1a5e36;font-weight:600}
+
+/* ── Lineups ── */
+.lineup-block{background:#fff;padding:16px}
+.lineup-team-hdr{font-size:11px;font-weight:800;color:#999;letter-spacing:.5px;padding-bottom:10px;border-bottom:1px solid #eee;margin-bottom:4px}
+.lineup-player{padding:11px 0;border-bottom:1px solid #f5f5f5;font-size:14px;display:flex;gap:10px}
+.lineup-num{color:#999;font-size:12px;width:22px;flex-shrink:0;padding-top:1px}
+.lineup-gap{height:20px}
+
+/* ── Match docs ── */
+.docs-block{background:#fff;padding:0}
+.docs-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px 8px;background:#fff;border-bottom:1px solid #f0f0f0}
+.docs-header-lbl{font-size:11px;font-weight:800;color:#999;letter-spacing:.5px;text-transform:uppercase}
+.docs-add-btn{width:32px;height:32px;border-radius:50%;background:#1a5e36;color:#fff;font-size:22px;line-height:32px;text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:300}
+.doc-card{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer;transition:background .1s}
+.doc-card:active{background:#f5f5f5}
+.doc-icon{width:42px;height:48px;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.doc-icon.pdf{background:#e53935}
+.doc-icon.img{background:#1565c0}
+.doc-icon.other{background:#6a1b9a}
+.doc-icon-lbl{font-size:10px;font-weight:800;color:#fff;letter-spacing:.5px}
+.doc-icon-lines{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+.doc-icon-lines span{display:block;width:20px;height:2px;background:rgba(255,255,255,.6);border-radius:1px}
+.doc-info{flex:1;min-width:0}
+.doc-name{font-size:14px;font-weight:700;margin-bottom:3px}
+.doc-desc{font-size:11px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-arrow{color:#ccc;font-size:18px;flex-shrink:0}
+.doc-del{color:#e53935;font-size:18px;padding:4px 0 4px 8px;flex-shrink:0;line-height:1}
+.doc-viewer{width:100%;height:75vh;border:none;background:#f0f0f0;display:block}
+.doc-img-viewer{width:100%;max-height:80vh;object-fit:contain;display:block;background:#111}
+.doc-viewer-bar{background:#1a5e36;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+.doc-viewer-name{font-size:13px;font-weight:700}
+/* ── Add-doc modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end}
+.modal-sheet{background:#fff;border-radius:16px 16px 0 0;width:100%;padding:24px 20px 36px;display:flex;flex-direction:column;gap:14px}
+.modal-title{font-size:17px;font-weight:800;margin-bottom:4px}
+.modal-field label{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px}
+.modal-field input,.modal-field select{width:100%;border:1.5px solid #ddd;border-radius:8px;padding:10px 12px;font-size:15px;outline:none}
+.modal-field input:focus,.modal-field select:focus{border-color:#1a5e36}
+.modal-btns{display:flex;gap:10px;margin-top:4px}
+.modal-btn{flex:1;padding:13px;border-radius:10px;font-size:15px;font-weight:700;border:none;cursor:pointer}
+.modal-btn-cancel{background:#f0f0f0;color:#333}
+.modal-btn-add{background:#1a5e36;color:#fff}
+
+/* ── Team status tab ── */
+.status-block{padding:0 0 8px}
+.status-section{margin:12px 16px 0;border-radius:10px;overflow:hidden;border:1px solid #e8e8e8}
+.status-sec-hdr{background:#1a5e36;color:#fff;font-size:11px;font-weight:800;letter-spacing:.8px;padding:8px 14px;text-transform:uppercase}
+.status-sec-hdr.amber{background:#e65100}
+.status-sec-hdr.blue{background:#1565c0}
+.status-player-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #f0f0f0;gap:10px}
+.status-player-row:last-child{border-bottom:none}
+.status-pos{width:22px;height:22px;border-radius:50%;background:#f0f0f0;font-size:11px;font-weight:800;color:#666;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.status-pos.keeper{background:#1a5e36;color:#fff}
+.status-pos.two-ov{background:#e65100;color:#fff}
+.status-name{font-size:14px;font-weight:700;flex:1}
+.status-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:4px}
+.status-tag.keeper{background:#e8f5e9;color:#1a5e36}
+.status-tag.two-ov{background:#fff3e0;color:#e65100}
+.status-stat{font-size:12px;color:#666;text-align:right;line-height:1.4}
+.status-stat strong{color:#222;font-weight:800}
+.status-row-2col{display:flex;gap:0}
+.status-col{flex:1;padding:10px 14px;border-right:1px solid #f0f0f0}
+.status-col:last-child{border-right:none}
+.status-col-hdr{font-size:10px;font-weight:800;color:#999;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+/* ── Coming soon ── */
+.coming-soon{padding:48px 20px;text-align:center;color:#bbb;font-size:14px}
+
+.pb{padding-bottom:60px}
+.loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:12px;color:#1a5e36}
+.loading-dot{width:10px;height:10px;border-radius:50%;background:#1a5e36;animation:ld .8s infinite alternate}
+@keyframes ld{from{opacity:.2}to{opacity:1}}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading-screen"><div class="loading-dot"></div><div style="font-size:13px;font-weight:700;color:#999">Loading...</div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.js"></script>
+<script>
+// ── Supabase ──
+var SUPA_URL='https://xmnmwnfmmopsxhihmyyg.supabase.co';
+var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhtbm13bmZtbW9wc3hoaWhteXlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTQzODIsImV4cCI6MjEwNzIzMDM4Mn0.WTwqNEdOXeauDJiBxktFQDb6N4T-N_qH-HN-nytsHHQ';
+var db=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+// Seed data shown instantly while Supabase loads
+var M_SEED = [
+  {
+    id:1, round:1,
+    date:"Sat 10 Oct", time:"7:45 AM",
+    datetime:"Sat 10 Oct 2026 at 7:45AM (local time)",
+    venue:"Yeronga Memorial Park - Oval #1",
+    grade:"MSW Stage 1 Super 7's",
+    status:"completed",
+    t1:{name:"Souths Hawks",  short:"SH",  logo:"SH",  cls:"logo-sh"},
+    t2:{name:"WPC Teal",      short:"TEAL",logo:"WPC", cls:"logo-wpc"},
+    innings:[
+      { // innings 1 — SH bat
+        bat:"Souths Hawks", bowl:"WPC Teal",
+        total:82, wkts:9, overs:"20.0",
+        extras:{w:34,b:0,lb:0,nb:0,tot:34},
+        bonus:36,
+        batters:[
+          {n:"Elliot",  d:"b Zac",       r:6,  b:17,fs:1,sx:0},
+          {n:"Seb",     d:"b Arish",     r:8,  b:17,fs:1,sx:0},
+          {n:"Andrey",  d:"b Tom",       r:5,  b:17,fs:0,sx:0},
+          {n:"Patrick", d:"b Zac",       r:8,  b:17,fs:0,sx:0},
+          {n:"Jojo",    d:"b Surya",     r:6,  b:17,fs:0,sx:0},
+          {n:"Oscar",   d:"run out (?)", r:15, b:17,fs:1,sx:0},
+        ],
+        bowlers:[
+          {n:"Avidan",  o:"3.0",r:19,w:1,ec:6.3},
+          {n:"Zac",     o:"4.0",r:13,w:3,ec:3.3},
+          {n:"Arish",   o:"3.0",r:4, w:3,ec:1.3},
+          {n:"Aksharan",o:"3.0",r:19,w:0,ec:6.3},
+          {n:"Serhan",  o:"2.0",r:10,w:0,ec:5.0},
+          {n:"Tom",     o:"2.0",r:10,w:1,ec:5.0},
+          {n:"Surya",   o:"3.0",r:7, w:1,ec:2.3},
+        ]
+      },
+      { // innings 2 — WPC Teal bat
+        bat:"WPC Teal", bowl:"Souths Hawks",
+        total:130, wkts:1, overs:"20.0",
+        extras:{w:57,b:1,lb:0,nb:0,tot:58},
+        bonus:4,
+        batters:[
+          {n:"Tom",      d:"retired",  r:8,  b:17,fs:1,sx:0},
+          {n:"Serhan",   d:"b Seb",    r:7,  b:17,fs:1,sx:0},
+          {n:"Aksharan", d:"retired",  r:11, b:17,fs:0,sx:0},
+          {n:"Surya",    d:"retired",  r:13, b:17,fs:1,sx:0},
+          {n:"Zac",      d:"retired",  r:8,  b:17,fs:0,sx:0},
+          {n:"Arish",    d:"retired",  r:11, b:17,fs:0,sx:0},
+          {n:"Avidan",   d:"not out",  r:14, b:17,fs:1,sx:0},
+        ],
+        bowlers:[
+          {n:"AudreyT", o:"4.0",r:17,w:0,ec:4.3},
+          {n:"Seb",     o:"4.0",r:22,w:1,ec:5.5},
+          {n:"Jojo",    o:"4.0",r:44,w:0,ec:11.0},
+          {n:"Oscar",   o:"3.0",r:15,w:0,ec:5.0},
+          {n:"Patrick", o:"3.0",r:16,w:0,ec:5.3},
+          {n:"Elliot",  o:"2.0",r:15,w:0,ec:7.5},
+        ]
+      }
+    ],
+    docs:[
+      {name:"Match Scoresheet", desc:"Game 1 – MATCH DURATION score sheet", file:"game1-scoresheet.pdf", type:"PDF"},
+    ],
+    teamStatus:{
+      team:"WPC Teal",
+      battingOrder:["Tom","Serhan","Aksharan","Surya","Zac","Arish","Avidan"],
+      keepers:["Surya","Arish"],
+      bowlingCycle:["Avidan","Zac","Arish","Aksharan","Serhan","Tom","Surya"],
+      twoOverBowler:"Serhan",
+      nextGame:{
+        battingOrder:["Aksharan","Surya","Zac","Arish","Avidan","Tom","Serhan"],
+        keepers:["Avidan","Tom"],
+        bowlingCycle:["Arish","Aksharan","Serhan","Tom","Surya","Avidan","Zac"],
+        twoOverBowler:"Avidan"
+      }
+    }
+  },
+  {
+    id:2, round:2,
+    date:"Sat 17 Oct", time:"10:30 AM",
+    datetime:"Sat 17 Oct 2026 at 10:30AM (local time)",
+    venue:"Algester State School",
+    grade:"MSW Stage 1 Super 7's",
+    status:"upcoming",
+    t1:{name:"BSK Cubs Bronze",short:"BSK",logo:"BSK",cls:"logo-bsk"},
+    t2:{name:"WPC Teal",       short:"TEAL",logo:"WPC",cls:"logo-wpc"},
+    result:null, innings:[], docs:[]
+  },
+  {
+    id:3, round:3,
+    date:"Sat 24 Oct", time:"8:00 AM",
+    datetime:"Sat 24 Oct 2026 at 8:00AM (local time)",
+    venue:"West Synthetic",
+    grade:"MSW Stage 1 Super 7's",
+    status:"upcoming",
+    t1:{name:"WPC Teal",  short:"TEAL",logo:"WPC",cls:"logo-wpc"},
+    t2:{name:"WPC Yellow",short:"YLW", logo:"WPY",cls:"logo-wpcy"},
+    result:null, innings:[], docs:[]
+  }
+];
+var M=M_SEED.slice();
+
+// ── state ──
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,statBat:true,statBowl:false};
+
+function getM(id){return M.find(m=>m.id===id);}
+function sr(r,b){return b?(r/b*100).toFixed(1):'0.0';}
+function extStr(e){
+  var p=[];
+  if(e.w)p.push('w '+e.w);
+  if(e.b)p.push('b '+e.b);
+  if(e.lb)p.push('lb '+e.lb);
+  if(e.nb)p.push('nb '+e.nb);
+  return p.length?'('+p.join(', ')+')':'';
+}
+
+// ── renderers ──
+
+function hList(){
+  var rows=M.map(function(m){
+    var teamsHtml;
+    if(m.status==='completed'){
+      var i0=m.innings[0],i1=m.innings[1];
+      // t1 (SH) batting score = i0, t1 bowling bonus = i1.bonus
+      // t2 (WPC) batting score = i1, t2 bowling bonus = i0.bonus
+      teamsHtml=
+        '<div class="card-teams">'+
+        '<div class="team-row">'+
+          '<div class="team-logo '+m.t1.cls+'">'+m.t1.logo+'</div>'+
+          '<div class="team-name">'+m.t1.name+'</div>'+
+          '<div class="team-score"><div class="tscore">'+i0.total+'/'+i0.wkts+'</div>'+
+          '<div class="tbonus">+'+i1.bonus+' bonus</div></div>'+
+        '</div>'+
+        '<div class="team-row">'+
+          '<div class="team-logo '+m.t2.cls+'">'+m.t2.logo+'</div>'+
+          '<div class="team-name">'+m.t2.name+'</div>'+
+          '<div class="team-score"><div class="tscore">'+i1.total+'/'+i1.wkts+'</div>'+
+          '<div class="tbonus">+'+i0.bonus+' bonus</div></div>'+
+        '</div>'+
+        '</div>'+
+        '<div class="card-result">'+m.t2.name+' won &bull; '+
+          (i1.total+i0.bonus)+' vs '+(i0.total+i1.bonus)+'</div>';
+    } else {
+      teamsHtml=
+        '<div class="card-teams">'+
+        '<div class="team-row">'+
+          '<div class="team-logo '+m.t1.cls+'">'+m.t1.logo+'</div>'+
+          '<div class="team-name">'+m.t1.name+'</div>'+
+        '</div>'+
+        '<div class="team-row">'+
+          '<div class="team-logo '+m.t2.cls+'">'+m.t2.logo+'</div>'+
+          '<div class="team-name">'+m.t2.name+'</div>'+
+        '</div>'+
+        '</div>';
+    }
+    return (
+      '<div class="round-hdr"><span class="round-ttl">Round '+m.round+'</span><span class="round-dt">'+m.date+'</span></div>'+
+      '<div class="card" onclick="openM('+m.id+')">'+
+        '<div class="card-top">'+
+          '<span class="badge badge-'+m.status+'">'+m.status.toUpperCase()+'</span>'+
+          '<span class="card-time">'+m.datetime+'</span>'+
+        '</div>'+
+        teamsHtml+
+        '<div class="card-venue">T20 &bull; '+m.venue+'</div>'+
+      '</div>'
+    );
+  }).join('');
+
+  return (
+    '<div class="hdr">'+
+      '<div class="hdr-drop">WPC Teal '+
+        '<svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>'+
+      '</div>'+
+    '</div>'+
+    '<div class="tabs">'+
+      '<div class="tab on">FIXTURE</div>'+
+      '<div class="tab">STANDINGS</div>'+
+      '<div class="tab">STATS</div>'+
+    '</div>'+
+    '<div class="pb">'+
+      '<div class="grade-bar">'+
+        '<div><div class="grade-lbl">Grade</div><div class="grade-name">MSW Stage 1 Super 7\'s</div></div>'+
+        '<div class="grade-link">Fixture ›</div>'+
+      '</div>'+
+      rows+
+    '</div>'
+  );
+}
+
+function hDetail(mid){
+  var m=getM(mid);
+  var hasInn=m.innings.length>0;
+  var i0=hasInn?m.innings[0]:null,i1=hasInn?m.innings[1]:null;
+  var resultStr=hasInn
+    ? m.t2.name+' won ('+(i1.total+i0.bonus)+' vs '+(i0.total+i1.bonus)+')'
+    : m.datetime;
+
+  var toggleHtml='';
+  if(S.tab==='summary' && hasInn){
+    toggleHtml=
+      '<div class="inn-toggle">'+
+        '<span class="inn-toggle-lbl">INNINGS</span>'+
+        '<div class="inn-btn'+(S.inn===0?' on':'')+'" onclick="setInn(0)">1</div>'+
+        '<div class="inn-btn'+(S.inn===1?' on':'')+'" onclick="setInn(1)">2</div>'+
+      '</div>';
+  }
+
+  var bodyHtml='';
+  if(S.tab==='summary'){
+    if(hasInn){
+      bodyHtml=hScorecard(m.innings[S.inn]);
+    } else {
+      bodyHtml='<div class="coming-soon">Match not yet played</div>'+hMatchInfo(m);
+    }
+  } else if(S.tab==='docs'){
+    bodyHtml=hDocs(m);
+  } else if(S.tab==='lineups'){
+    bodyHtml=hLineups(m);
+  } else if(S.tab==='status'){
+    bodyHtml=hStatus(m);
+  }
+
+  return (
+    '<div class="hdr">'+
+      '<span class="hdr-back" onclick="goBack()">&#8592;</span>'+
+      '<div class="hdr-title">MSW Stage 1 Super 7\'s</div>'+
+      '<span class="hdr-share">&#8679;</span>'+
+    '</div>'+
+    '<div class="banner">'+
+      '<div class="banner-venue">T20 &bull; '+m.venue+'</div>'+
+      '<div class="banner-teams">'+
+        '<div class="banner-team'+(hasInn?' banner-team-btn':'')+'"'+
+          (hasInn?' onclick="setInn(0)"':'')+'>'+
+          '<div class="banner-logo '+m.t1.cls+(hasInn&&S.inn===0?' banner-logo-active':'')+'">'+m.t1.logo+'</div>'+
+          '<div class="banner-name'+(hasInn&&S.inn===0?' banner-name-active':'')+'">'+m.t1.name.toUpperCase()+'</div>'+
+          (hasInn&&S.inn===0?'<div class="banner-inn-dot"></div>':'')+
+        '</div>'+
+        '<div class="banner-vs">v</div>'+
+        '<div class="banner-team'+(hasInn?' banner-team-btn':'')+'"'+
+          (hasInn?' onclick="setInn(1)"':'')+'>'+
+          '<div class="banner-logo '+m.t2.cls+(hasInn&&S.inn===1?' banner-logo-active':'')+'">'+m.t2.logo+'</div>'+
+          '<div class="banner-name'+(hasInn&&S.inn===1?' banner-name-active':'')+'">'+m.t2.name.toUpperCase()+'</div>'+
+          (hasInn&&S.inn===1?'<div class="banner-inn-dot"></div>':'')+
+        '</div>'+
+      '</div>'+
+      '<div class="banner-status">'+
+        '<span class="badge badge-inv-'+m.status+'">'+m.status.toUpperCase()+'</span>'+
+        '<span class="banner-result">'+resultStr+'</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="tabs">'+
+      '<div class="tab'+(S.tab==='summary'?' on':'')+'" onclick="setTab(\'summary\')">SUMMARY</div>'+
+      '<div class="tab'+(S.tab==='docs'?' on':'')+'" onclick="setTab(\'docs\')">MATCH DOCS</div>'+
+      '<div class="tab'+(S.tab==='lineups'?' on':'')+'" onclick="setTab(\'lineups\')">LINEUPS</div>'+
+      (m.teamStatus?'<div class="tab'+(S.tab==='status'?' on':'')+'" onclick="setTab(\'status\')">STATUS</div>':'')+
+    '</div>'+
+    toggleHtml+
+    '<div class="pb">'+bodyHtml+'</div>'
+  );
+}
+
+function hScorecard(inn){
+  var batRows=inn.batters.map(function(b){
+    return (
+      '<tr>'+
+        '<td><div class="bat-name">'+b.n+'</div><div class="bat-dis">'+b.d+'</div></td>'+
+        '<td class="num-bold">'+b.r+'</td>'+
+        '<td class="num">'+b.b+'</td>'+
+        '<td class="num">'+b.fs+'</td>'+
+        '<td class="num">'+b.sx+'</td>'+
+        '<td class="num">'+sr(b.r,b.b)+'</td>'+
+      '</tr>'
+    );
+  }).join('');
+
+  var bowlRows=inn.bowlers.map(function(b){
+    return (
+      '<tr>'+
+        '<td><div class="bat-name">'+b.n+'</div></td>'+
+        '<td class="num">'+b.o+'</td>'+
+        '<td class="num">'+b.r+'</td>'+
+        '<td class="num-bold">'+b.w+'</td>'+
+        '<td class="num">'+b.ec.toFixed(1)+'</td>'+
+      '</tr>'
+    );
+  }).join('');
+
+  var wktWord=inn.wkts===1?'wicket':'wickets';
+
+  return (
+    '<div class="sc-block">'+
+      '<div class="sc-hdr">'+inn.bat.toUpperCase()+' &ndash; BATTING</div>'+
+      '<table class="sc-tbl">'+
+        '<tr><th>BATTER</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
+        batRows+
+      '</table>'+
+      '<div class="sc-extras"><span>Extras '+extStr(inn.extras)+'</span><span>'+inn.extras.tot+'</span></div>'+
+      '<div class="sc-total"><span>Total ('+inn.wkts+' wkts, '+inn.overs+' ov)</span><span>'+inn.total+'</span></div>'+
+      '<div class="sc-bonus">'+inn.bowl+' receive +'+inn.bonus+' bonus runs ('+inn.wkts+' '+wktWord+' taken)</div>'+
+    '</div>'+
+    '<div class="sc-gap"></div>'+
+    '<div class="sc-block">'+
+      '<div class="sc-hdr">'+inn.bowl.toUpperCase()+' &ndash; BOWLING</div>'+
+      '<table class="sc-tbl">'+
+        '<tr><th>BOWLER</th><th>O</th><th>R</th><th>W</th><th>ECON</th></tr>'+
+        bowlRows+
+      '</table>'+
+    '</div>'
+  );
+}
+
+function hMatchInfo(m){
+  return (
+    '<div class="info-block">'+
+      '<div class="info-row"><div class="info-lbl">Format</div><div class="info-val">T20</div></div>'+
+      '<div class="info-row"><div class="info-lbl">Grade</div><div class="info-val">'+m.grade+'</div></div>'+
+      '<div class="info-row"><div class="info-lbl">Venue</div><div class="info-val info-val-grn">'+m.venue+'</div></div>'+
+      '<div class="info-row"><div class="info-lbl">Date</div><div class="info-val">'+m.datetime+'</div></div>'+
+      '<div class="info-row"><div class="info-lbl">Coaches</div><div class="info-val">WPC Teal: Sajid Mahmood</div></div>'+
+      '<div class="info-row"><div class="info-lbl">Umpires</div><div class="info-val" style="color:#bbb">TBC</div></div>'+
+    '</div>'
+  );
+}
+
+function docIconCls(type){
+  var t=(type||'').toUpperCase();
+  if(t==='PDF')return 'pdf';
+  if(t==='IMG'||t==='IMAGE'||t==='JPG'||t==='PNG')return 'img';
+  return 'other';
+}
+
+function docCard(d){
+  var isOpen=S.docFile===d.file;
+  var iconCls=docIconCls(d.type);
+  var isImg=(iconCls==='img');
+  return (
+    '<div class="doc-card" onclick="toggleDoc(\''+d.file+'\')">'+
+      '<div class="doc-icon '+iconCls+'">'+
+        '<div class="doc-icon-lbl">'+d.type+'</div>'+
+        '<div class="doc-icon-lines"><span></span><span></span><span></span></div>'+
+      '</div>'+
+      '<div class="doc-info">'+
+        '<div class="doc-name">'+d.name+'</div>'+
+        '<div class="doc-desc">'+d.desc+'</div>'+
+      '</div>'+
+      (d.id?'<span class="doc-del" onclick="event.stopPropagation();deleteDoc('+d.id+')">&#10005;</span>':'')+
+      '<span class="doc-arrow">'+(isOpen?'&#8964;':'&#8250;')+'</span>'+
+    '</div>'+
+    (isOpen?
+      '<div>'+
+        '<div class="doc-viewer-bar">'+
+          '<span class="doc-viewer-name">'+d.name+'</span>'+
+          '<a href="'+d.file+'" target="_blank" style="color:#f5a623;font-size:12px;font-weight:700;text-decoration:none">OPEN ↗</a>'+
+        '</div>'+
+        (isImg?
+          '<img class="doc-img-viewer" src="'+d.file+'" alt="'+d.name+'">'
+        :
+          '<iframe class="doc-viewer" src="'+d.file+'"></iframe>'
+        )+
+      '</div>'
+    :'')
+  );
+}
+
+function orderRows(order, keepers, twoOverBowler){
+  return order.map(function(name,i){
+    var isKeeper=keepers?(keepers.indexOf(name)>=0):false;
+    var isTwoOv=twoOverBowler?(name===twoOverBowler):false;
+    var keeperOvs=(keepers&&keepers[0]===name)?'WK 1-10':'WK 11-20';
+    return (
+      '<div class="status-player-row">'+
+        '<div class="status-pos'+(isKeeper?' keeper':'')+(isTwoOv?' two-ov':'')+'">'+( i+1)+'</div>'+
+        '<div class="status-name">'+name+
+          (isKeeper?'<span class="status-tag keeper">'+keeperOvs+'</span>':'')+
+          (isTwoOv?'<span class="status-tag two-ov">2 overs</span>':'')+
+        '</div>'+
+      '</div>'
+    );
+  }).join('');
+}
+
+function hDocs(m){
+  var allDocs=m.docs||[];
+  var allEmpty=!allDocs.length;
+  var cards='';
+  allDocs.forEach(function(d){cards+=docCard(d);});
+  var modal='';
+  if(S.showAddDoc){
+    modal=(
+      '<div class="modal-overlay" onclick="closeAddDoc()">'+
+        '<div class="modal-sheet" onclick="event.stopPropagation()">'+
+          '<div class="modal-title">Add Document</div>'+
+          '<div class="modal-field"><label>Name</label><input id="adn" placeholder="e.g. Team Photo"></div>'+
+          '<div class="modal-field"><label>Description</label><input id="add" placeholder="Short description"></div>'+
+          '<div class="modal-field"><label>URL or filename</label><input id="adf" placeholder="e.g. http://… or photo.jpg"></div>'+
+          '<div class="modal-field"><label>Type</label>'+
+            '<select id="adt">'+
+              '<option value="PDF">PDF</option>'+
+              '<option value="IMG">Image</option>'+
+              '<option value="DOC">Document</option>'+
+              '<option value="OTHER">Other</option>'+
+            '</select>'+
+          '</div>'+
+          '<div class="modal-btns">'+
+            '<button class="modal-btn modal-btn-cancel" onclick="closeAddDoc()">Cancel</button>'+
+            '<button class="modal-btn modal-btn-add" onclick="saveDoc('+m.id+')">Add</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    );
+  }
+  // ── Order blocks (only when teamStatus exists) ──
+  var orderHtml='';
+  if(m.teamStatus){
+    var ts=m.teamStatus, ng=ts.nextGame;
+    orderHtml=(
+      '<div class="status-section" style="margin:12px 16px 0">'+
+        '<div class="status-sec-hdr">This Match &mdash; Batting Order</div>'+
+        orderRows(ts.battingOrder, ts.keepers, null)+
+      '</div>'+
+      '<div class="status-section" style="margin:8px 16px 0">'+
+        '<div class="status-sec-hdr">This Match &mdash; Bowling Order</div>'+
+        orderRows(ts.bowlingCycle, null, ts.twoOverBowler)+
+      '</div>'+
+      '<div class="status-section" style="margin:8px 16px 0">'+
+        '<div class="status-sec-hdr amber">Next Match &mdash; Batting Order</div>'+
+        orderRows(ng.battingOrder, ng.keepers, null)+
+      '</div>'+
+      '<div class="status-section" style="margin:8px 16px 12px">'+
+        '<div class="status-sec-hdr blue">Next Match &mdash; Bowling Order</div>'+
+        orderRows(ng.bowlingCycle, null, ng.twoOverBowler)+
+      '</div>'
+    );
+  }
+  return (
+    '<div class="docs-block">'+
+      '<div class="docs-header">'+
+        '<div class="docs-header-lbl">Documents</div>'+
+        '<div class="docs-add-btn" onclick="showAddDoc()">+</div>'+
+      '</div>'+
+      (allEmpty?'<div class="coming-soon">No documents yet — tap + to add one</div>':cards)+
+    '</div>'+
+    orderHtml+
+    modal
+  );
+}
+
+function toggleDoc(file){
+  S.docFile=(S.docFile===file?null:file);
+  render();
+}
+function showAddDoc(){S.showAddDoc=true;render();}
+function closeAddDoc(){S.showAddDoc=false;render();}
+function saveDoc(mid){
+  var n=(document.getElementById('adn')||{}).value||'';
+  var d=(document.getElementById('add')||{}).value||'';
+  var f=(document.getElementById('adf')||{}).value||'';
+  var t=(document.getElementById('adt')||{}).value||'PDF';
+  if(!n||!f){alert('Name and URL/filename are required');return;}
+  S.showAddDoc=false;
+  render();
+  db.from('match_docs').insert({match_id:mid,name:n,description:d,file_url:f,type:t})
+    .then(function(res){if(res.error)console.error('saveDoc error',res.error);else loadData();});
+}
+function deleteDoc(docId){
+  db.from('match_docs').delete().eq('id',docId)
+    .then(function(res){if(res.error)console.error('deleteDoc error',res.error);else loadData();});
+}
+
+function hLineups(m){
+  if(!m.innings.length){
+    return '<div class="coming-soon">Lineups not yet available</div>';
+  }
+  var i0=m.innings[0], i1=m.innings[1];
+  // t1 bats in innings 0, t2 bats in innings 1
+  var t1players=i0.batters.map(function(b,i){
+    return '<div class="lineup-player"><span class="lineup-num">'+(i+1)+'</span><span>'+b.n+'</span></div>';
+  }).join('');
+  var t2players=i1.batters.map(function(b,i){
+    return '<div class="lineup-player"><span class="lineup-num">'+(i+1)+'</span><span>'+b.n+'</span></div>';
+  }).join('');
+  return (
+    '<div class="lineup-block">'+
+      '<div class="lineup-team-hdr">'+m.t1.name.toUpperCase()+'</div>'+
+      t1players+
+      '<div class="lineup-gap"></div>'+
+      '<div class="lineup-team-hdr">'+m.t2.name.toUpperCase()+'</div>'+
+      t2players+
+    '</div>'
+  );
+}
+
+function hStatus(m){
+  if(!m.teamStatus){return '<div class="coming-soon">No status data for this match</div>';}
+  var ts=m.teamStatus;
+  var batMap={}, bowlMap={};
+  m.innings.forEach(function(inn){
+    if(inn.bat===ts.team) inn.batters.forEach(function(b){batMap[b.n]=b;});
+    if(inn.bowl===ts.team) inn.bowlers.forEach(function(b){bowlMap[b.n]=b;});
+  });
+  // ── BATTING STATS (sorted) ──
+  var sortedBat=ts.battingOrder.slice().map(function(name){
+    return batMap[name]||{n:name,r:0,b:0,fs:0,sx:0,d:'-'};
+  }).sort(function(a,b){
+    if(b.r!==a.r)return b.r-a.r;
+    var srA=a.b?(a.r/a.b*100):0, srB=b.b?(b.r/b.b*100):0;
+    if(Math.abs(srB-srA)>0.01)return srB-srA;
+    if(b.fs!==a.fs)return b.fs-a.fs;
+    return b.sx-a.sx;
+  });
+  var batRows=sortedBat.map(function(b){
+    var sr=b.b?(b.r/b.b*100).toFixed(1):'0.0';
+    return '<tr>'+
+      '<td><div class="bat-name">'+b.n+'</div><div class="bat-dis">'+(b.d||'-')+'</div></td>'+
+      '<td class="num-bold">'+b.r+'</td>'+
+      '<td class="num">'+b.b+'</td>'+
+      '<td class="num">'+(b.fs||0)+'</td>'+
+      '<td class="num">'+(b.sx||0)+'</td>'+
+      '<td class="num">'+sr+'</td>'+
+    '</tr>';
+  }).join('');
+  // ── BOWLING STATS (sorted by wickets desc, then economy asc) ──
+  var sortedBowl=ts.battingOrder.slice().filter(function(name){return !!bowlMap[name];})
+    .map(function(name){return bowlMap[name];})
+    .sort(function(a,b){
+      if(b.w!==a.w)return b.w-a.w;
+      return a.ec-b.ec;
+    });
+  var bowlRows=sortedBowl.map(function(b){
+    return '<tr>'+
+      '<td><div class="bat-name">'+b.n+'</div></td>'+
+      '<td class="num">'+b.o+'</td>'+
+      '<td class="num">'+b.r+'</td>'+
+      '<td class="num-bold">'+b.w+'</td>'+
+      '<td class="num">'+b.ec+'</td>'+
+    '</tr>';
+  }).join('');
+  return (
+    '<div class="status-block">'+
+      // Batting stats collapsible
+      '<div class="sc-block" style="margin:12px 0 1px">'+
+        '<div class="sc-hdr" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="toggleStatSec(\'bat\')">'+
+          '<span>'+ts.team.toUpperCase()+' &ndash; BATTING STATS</span>'+
+          '<span style="font-size:16px;font-weight:400">'+(S.statBat?'&#8964;':'&#8250;')+'</span>'+
+        '</div>'+
+        (S.statBat?
+          '<table class="sc-tbl">'+
+            '<tr><th>BATTER</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
+            batRows+
+          '</table>'
+        :'')+
+      '</div>'+
+      // Bowling stats collapsible
+      '<div class="sc-block" style="margin:1px 0 12px">'+
+        '<div class="sc-hdr" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="toggleStatSec(\'bowl\')">'+
+          '<span>'+ts.team.toUpperCase()+' &ndash; BOWLING STATS</span>'+
+          '<span style="font-size:16px;font-weight:400">'+(S.statBowl?'&#8964;':'&#8250;')+'</span>'+
+        '</div>'+
+        (S.statBowl?
+          '<table class="sc-tbl">'+
+            '<tr><th>BOWLER</th><th>O</th><th>R</th><th>W</th><th>ECON</th></tr>'+
+            bowlRows+
+          '</table>'
+        :'')+
+      '</div>'+
+    '</div>'
+  );
+}
+function toggleStatSec(s){if(s==='bat')S.statBat=!S.statBat;else S.statBowl=!S.statBowl;render();}
+
+// ── actions ──
+function openM(id){S.view='match';S.mid=id;S.tab='summary';S.inn=0;S.docFile=null;render();scrollTo(0,0);}
+function goBack(){S.view='list';S.mid=null;S.docFile=null;render();scrollTo(0,0);}
+function setTab(t){S.tab=t;S.docFile=null;render();}
+function setInn(i){S.inn=i;render();}
+
+function saveNav(){
+  try{sessionStorage.setItem('wpc-nav',JSON.stringify({view:S.view,mid:S.mid,tab:S.tab,inn:S.inn}));}catch(e){}
+}
+function render(){
+  saveNav();
+  var app=document.getElementById('app');
+  app.innerHTML=S.view==='list'?hList():hDetail(S.mid);
+}
+// ── loadData: fetch from Supabase, assemble M, then render ──
+function loadData(){
+  Promise.all([
+    db.from('matches').select('*').order('id'),
+    db.from('innings').select('*').order('match_id').order('innings_num'),
+    db.from('match_docs').select('*').order('created_at')
+  ]).then(function(results){
+    var mRes=results[0], iRes=results[1], dRes=results[2];
+    if(mRes.error||iRes.error||dRes.error){
+      console.error('loadData error',mRes.error||iRes.error||dRes.error);
+      render(); return;
+    }
+    var rows=mRes.data, inns=iRes.data, docs=dRes.data;
+    if(!rows||!rows.length){render();return;}
+    M=rows.map(function(r){
+      return {
+        id:r.id, round:r.round, date:r.date, time:r.time, datetime:r.datetime,
+        venue:r.venue, grade:r.grade, status:r.status,
+        t1:r.t1, t2:r.t2, result:r.result,
+        teamStatus:r.team_status,
+        innings:(inns||[]).filter(function(i){return i.match_id===r.id;}).map(function(i){
+          return {bat:i.bat,bowl:i.bowl,total:i.total,wkts:i.wkts,overs:i.overs,
+                  extras:i.extras,bonus:i.bonus,
+                  batters:i.batters||[],bowlers:i.bowlers||[],
+                  scorerState:i.scorer_state};
+        }),
+        docs:(docs||[]).filter(function(d){return d.match_id===r.id;}).map(function(d){
+          return {id:d.id,name:d.name,desc:d.description,file:d.file_url,type:d.type};
+        })
+      };
+    });
+    render();
+  }).catch(function(err){console.error('loadData exception',err);render();});
+}
+
+// ── Real-time subscription ──
+db.channel('wpc-changes')
+  .on('postgres_changes',{event:'*',schema:'public',table:'matches'},function(){loadData();})
+  .on('postgres_changes',{event:'*',schema:'public',table:'innings'},function(){loadData();})
+  .on('postgres_changes',{event:'*',schema:'public',table:'match_docs'},function(){loadData();})
+  .subscribe();
+
+// restore navigation state on reload
+try{
+  var _nav=JSON.parse(sessionStorage.getItem('wpc-nav')||'null');
+  if(_nav&&_nav.view){S.view=_nav.view;S.mid=_nav.mid||null;S.tab=_nav.tab||'summary';S.inn=_nav.inn||0;}
+}catch(e){}
+loadData();
+</script>
+</body>
+</html>
