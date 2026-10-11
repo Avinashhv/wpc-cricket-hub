@@ -413,14 +413,18 @@ function rSetup(){
   } else if(sz.step===1){
     var bt=sz.batFirstIdx===0?m.t1.name:m.t2.name;
     var blt=sz.batFirstIdx===0?m.t2.name:m.t1.name;
+    var inn2=S.innNum===2;
+    var roAttr=inn2?' readonly style="opacity:.65;cursor:default"':'';
+    var roNote=inn2?'<div style="font-size:11px;opacity:.5;margin-bottom:8px">Carried over from Innings 1 — edit only to correct a name</div>':'';
     set(hdr+'<div class="scr">'+
+      roNote+
       '<div>'+
         '<div class="lbl">'+bt+' — Batting Order (one name per line)</div>'+
-        '<textarea class="inp" id="bat-txt" rows="8" placeholder="Tom\nSerhan\nAksharan\n...">'+sz.batTxt+'</textarea>'+
+        '<textarea class="inp" id="bat-txt" rows="8"'+roAttr+' placeholder="Tom\nSerhan\nAksharan\n...">'+sz.batTxt+'</textarea>'+
       '</div>'+
       '<div>'+
         '<div class="lbl">'+blt+' — Bowling Order (one per line)</div>'+
-        '<textarea class="inp" id="bowl-txt" rows="8" placeholder="Player1\nPlayer2\n...">'+sz.bowlTxt+'</textarea>'+
+        '<textarea class="inp" id="bowl-txt" rows="8"'+roAttr+' placeholder="Player1\nPlayer2\n...">'+sz.bowlTxt+'</textarea>'+
       '</div>'+
       '<button class="btn btn-gold" onclick="setupSaveOrders()">Next →</button>'+
     '</div>');
@@ -908,9 +912,11 @@ function startInn2(){
   S.balls=[];S.total=0;S.wkts=0;S.exW=0;S.exB=0;S.exNB=0;
   S.retirePending=false;S.endOverPending=false;S.showWkt=false;
   S.innId=null;
-  // Swap setup so new bat team's order goes in
   var prevSz=S.sz;
-  S.sz={step:1,batFirstIdx:1-prevSz.batFirstIdx,batTxt:'',bowlTxt:''};
+  // Carry inn1 orders across (swapped): inn1 bowlers bat in inn2, inn1 batters bowl in inn2
+  S.sz={step:1,batFirstIdx:1-prevSz.batFirstIdx,
+    batTxt:S.bowlOrder.join('\n'),
+    bowlTxt:S.batOrder.join('\n')};
   S.screen='setup';r();
 }
 

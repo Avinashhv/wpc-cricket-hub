@@ -325,25 +325,29 @@ function hList(){
     var teamsHtml;
     if(m.status==='completed'){
       var i0=m.innings[0],i1=m.innings[1];
-      // t1 (SH) batting score = i0, t1 bowling bonus = i1.bonus
-      // t2 (WPC) batting score = i1, t2 bowling bonus = i0.bonus
+      // Identify each team's batting innings by bat field (batting order not assumed)
+      var t1Inn=m.innings.find(function(i){return i.bat===m.t1.name;})||i0;
+      var t2Inn=m.innings.find(function(i){return i.bat===m.t2.name;})||i1;
+      var t1Score=t1Inn.total+(t2Inn?t2Inn.bonus:0);
+      var t2Score=t2Inn?(t2Inn.total+t1Inn.bonus):0;
+      var cardWinner=t2Score>t1Score?m.t2.name:m.t1.name;
       teamsHtml=
         '<div class="card-teams">'+
         '<div class="team-row">'+
           '<div class="team-logo '+m.t1.cls+'">'+m.t1.logo+'</div>'+
           '<div class="team-name">'+m.t1.name+'</div>'+
-          '<div class="team-score"><div class="tscore">'+i0.total+'/'+i0.wkts+'</div>'+
-          '<div class="tbonus">+'+i1.bonus+' bonus</div></div>'+
+          '<div class="team-score"><div class="tscore">'+t1Inn.total+'/'+t1Inn.wkts+'</div>'+
+          '<div class="tbonus">+'+(t2Inn?t2Inn.bonus:0)+' bonus</div></div>'+
         '</div>'+
         '<div class="team-row">'+
           '<div class="team-logo '+m.t2.cls+'">'+m.t2.logo+'</div>'+
           '<div class="team-name">'+m.t2.name+'</div>'+
-          '<div class="team-score"><div class="tscore">'+i1.total+'/'+i1.wkts+'</div>'+
-          '<div class="tbonus">+'+i0.bonus+' bonus</div></div>'+
+          '<div class="team-score"><div class="tscore">'+(t2Inn?t2Inn.total+'/'+t2Inn.wkts:'–')+'</div>'+
+          '<div class="tbonus">+'+t1Inn.bonus+' bonus</div></div>'+
         '</div>'+
         '</div>'+
-        '<div class="card-result">'+m.t2.name+' won &bull; '+
-          (i1.total+i0.bonus)+' vs '+(i0.total+i1.bonus)+'</div>';
+        '<div class="card-result">'+cardWinner+' won &bull; '+
+          Math.max(t1Score,t2Score)+' vs '+Math.min(t1Score,t2Score)+'</div>';
     } else if(m.status==='live' && m.innings && m.innings.length>0){
       var liveInn=m.innings[m.innings.length-1];
       var liveBonus=liveInn.wkts*4;
@@ -418,8 +422,13 @@ function hDetail(mid){
   var m=getM(mid);
   var hasInn=m.innings.length>0;
   var i0=hasInn?m.innings[0]:null,i1=hasInn?m.innings[1]:null;
-  var resultStr=hasInn
-    ? m.t2.name+' won ('+(i1.total+i0.bonus)+' vs '+(i0.total+i1.bonus)+')'
+  var t1Inn=hasInn?(m.innings.find(function(i){return i.bat===m.t1.name;})||i0):null;
+  var t2Inn=hasInn?(m.innings.find(function(i){return i.bat===m.t2.name;})||i1):null;
+  var t1DetailScore=t1Inn&&t2Inn?t1Inn.total+t2Inn.bonus:0;
+  var t2DetailScore=t1Inn&&t2Inn?t2Inn.total+t1Inn.bonus:0;
+  var detailWinner=t2DetailScore>t1DetailScore?m.t2.name:m.t1.name;
+  var resultStr=hasInn&&t1Inn&&t2Inn
+    ? detailWinner+' won ('+Math.max(t1DetailScore,t2DetailScore)+' vs '+Math.min(t1DetailScore,t2DetailScore)+')'
     : m.datetime;
 
   var toggleHtml='';
