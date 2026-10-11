@@ -691,7 +691,7 @@ function checkAfterBall(){
   var totalBalls=S.balls.length;
   // Check retire
   var bs=S.bs[S.batOn];
-  if(bs&&bs.b>=RETIRE_AT&&!bs.retired){
+  if(bs&&bs.b>=RETIRE_AT&&!bs.retired&&!bs.recalled){
     bs.retired=true;
     if(!bs.d)bs.d='retired';
     S.retirePending=true;
@@ -744,7 +744,11 @@ function confirmRetire(){
   if(idx<S.batOrder.length){
     S.batOn=S.batOrder[idx];
     S.batNextIdx=idx+1;
-  } else {endInnings();return;}
+  } else {
+    var recalled=recallBatter();
+    if(recalled){S.batOn=recalled;}
+    else{endInnings();return;}
+  }
   saveToDB(r);
 }
 
@@ -764,6 +768,19 @@ function undoBall(){
 
 function swapBat(){var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;r();}
 
+function recallBatter(){
+  // When no fresh batter available, recall the earliest retired (not dismissed) batter
+  for(var ri=0;ri<S.batOrder.length;ri++){
+    var rn=S.batOrder[ri];
+    if(S.bs[rn]&&S.bs[rn].retired&&!S.bs[rn].recalled&&rn!==S.batOff){
+      S.bs[rn].retired=false;
+      S.bs[rn].recalled=true;
+      return rn;
+    }
+  }
+  return null;
+}
+
 function doRetire(){
   S.retirePending=false;
   var idx=S.batNextIdx;
@@ -776,7 +793,9 @@ function doRetire(){
     S.batOn=S.batOrder[idx];
     S.batNextIdx=idx+1;
   } else {
-    endInnings();return;
+    var recalled=recallBatter();
+    if(recalled){S.batOn=recalled;}
+    else{endInnings();return;}
   }
   r();
 }
