@@ -188,7 +188,7 @@ var S={
   inn1:null,  // summary after innings 1 ends
 
   // Setup wizard
-  sz:{step:0,batFirstIdx:-1,batTxt:'',bowlTxt:''},
+  sz:{step:0,tossWinnerIdx:-1,tossDecision:'',batFirstIdx:-1,batTxt:'',bowlTxt:''},
 
   // Add match modal
   showAddMatch:false,
@@ -356,12 +356,23 @@ function rSetup(){
   '</div>';
 
   if(sz.step===0){
+    var tossWinner=sz.tossWinnerIdx>=0?(sz.tossWinnerIdx===0?m.t1.name:m.t2.name):'';
+    var decisionHtml='';
+    if(sz.tossWinnerIdx>=0){
+      decisionHtml=
+        '<div style="font-size:15px;font-weight:700;text-align:center;margin-top:16px">'+tossWinner+' chose to…</div>'+
+        '<div class="tpick">'+
+          '<div class="tpick-btn'+(sz.tossDecision==='bat'?' on':'')+'" onclick="S.sz.tossDecision=\'bat\';S.sz.batFirstIdx=S.sz.tossWinnerIdx;r()">Bat</div>'+
+          '<div class="tpick-btn'+(sz.tossDecision==='bowl'?' on':'')+'" onclick="S.sz.tossDecision=\'bowl\';S.sz.batFirstIdx=S.sz.tossWinnerIdx===0?1:0;r()">Bowl</div>'+
+        '</div>';
+    }
     set(hdr+'<div class="scr">'+
-      '<div style="font-size:17px;font-weight:800;text-align:center;margin-bottom:4px">Who bats first?</div>'+
+      '<div style="font-size:17px;font-weight:800;text-align:center;margin-bottom:4px">Who won the toss?</div>'+
       '<div class="tpick">'+
-        '<div class="tpick-btn'+(sz.batFirstIdx===0?' on':'')+'" onclick="S.sz.batFirstIdx=0;r()">'+m.t1.name+'</div>'+
-        '<div class="tpick-btn'+(sz.batFirstIdx===1?' on':'')+'" onclick="S.sz.batFirstIdx=1;r()">'+m.t2.name+'</div>'+
+        '<div class="tpick-btn'+(sz.tossWinnerIdx===0?' on':'')+'" onclick="S.sz.tossWinnerIdx=0;S.sz.tossDecision=\'\';S.sz.batFirstIdx=-1;r()">'+m.t1.name+'</div>'+
+        '<div class="tpick-btn'+(sz.tossWinnerIdx===1?' on':'')+'" onclick="S.sz.tossWinnerIdx=1;S.sz.tossDecision=\'\';S.sz.batFirstIdx=-1;r()">'+m.t2.name+'</div>'+
       '</div>'+
+      decisionHtml+
       (sz.batFirstIdx>=0?'<button class="btn btn-gold" onclick="S.sz.step=1;r()">Next →</button>':'')+
     '</div>');
 
