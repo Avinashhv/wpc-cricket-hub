@@ -548,6 +548,7 @@ function rScoring(){
 
   var wktModal='';
   if(S.showWkt){
+    var isRetire=S.wktType==='Retire';
     var howOpts=['Bowled','Caught','C&B','Run Out','Stumped','Hit Wkt'].map(function(t){
       return '<div class="mopt'+(S.wktType===t?' on':'')+'" onclick="S.wktType=\''+t+'\';r()">'+t+'</div>';
     }).join('');
@@ -559,13 +560,19 @@ function rScoring(){
         '<div class="mbox-title">Wicket / Dismissal</div>'+
         '<div class="lbl" style="margin-bottom:5px">How out?</div>'+
         '<div class="mgrid">'+howOpts+'</div>'+
-        '<div class="lbl" style="margin:10px 0 5px">Runs on this ball</div>'+
-        '<div class="mrow4">'+runOpts+
-          '<div class="mopt'+(S.wktRuns===3?' on':'')+'" onclick="S.wktRuns=3;r()">3</div>'+
-        '</div>'+
+        // Retire option — separate from dismissals, no wicket counted
+        '<div class="mopt" style="margin-top:6px;background:'+(isRetire?'#f5a623':'rgba(255,255,255,.1)')+';color:'+(isRetire?'#1a5e36':'#fff')+'" onclick="S.wktType=\'Retire\';r()">Retire Batter (no wicket)</div>'+
+        (!isRetire?
+          '<div class="lbl" style="margin:10px 0 5px">Runs on this ball</div>'+
+          '<div class="mrow4">'+runOpts+
+            '<div class="mopt'+(S.wktRuns===3?' on':'')+'" onclick="S.wktRuns=3;r()">3</div>'+
+          '</div>'
+        :
+          '<div style="opacity:.5;font-size:12px;margin:8px 0">Batter stands down — no ball bowled, no wicket, no bonus.</div>'
+        )+
         '<div class="mbtns">'+
           '<button class="mbtn mbtn-no" onclick="S.showWkt=false;r()">Cancel</button>'+
-          '<button class="mbtn mbtn-ok" onclick="confirmWkt()">Record</button>'+
+          '<button class="mbtn mbtn-ok" onclick="S.wktType===\'Retire\'?confirmRetire():confirmWkt()">Record</button>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -717,6 +724,26 @@ function confirmWkt(){
   if(S.wktRuns%2===1){var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;}
   S.showWkt=false;
   checkAfterBall();
+  saveToDB(r);
+}
+
+function confirmRetire(){
+  // Retire current batter — no wicket, no bonus, no ball consumed
+  S.showWkt=false;
+  var bs=S.bs[S.batOn];
+  if(bs){bs.retired=true;if(!bs.d)bs.d='retired';}
+  S.retirePending=false;
+  // Bring in next non-retired batter
+  var idx=S.batNextIdx;
+  while(idx<S.batOrder.length){
+    var n=S.batOrder[idx];
+    if(S.bs[n]&&!S.bs[n].retired){break;}
+    idx++;
+  }
+  if(idx<S.batOrder.length){
+    S.batOn=S.batOrder[idx];
+    S.batNextIdx=idx+1;
+  } else {endInnings();return;}
   saveToDB(r);
 }
 
