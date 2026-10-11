@@ -382,6 +382,8 @@ function hList(){
     '<div class="pb">'+
       (S.listTab==='stats'
         ? hSeasonStats()
+        : S.listTab==='standings'
+        ? hStandings()
         : '<div class="grade-bar">'+
             '<div><div class="grade-lbl">Grade</div><div class="grade-name">MSW Stage 1 Super 7\'s</div></div>'+
             '<div class="grade-link">Fixture ›</div>'+
@@ -694,6 +696,60 @@ function hLineups(m){
       t2players+
     '</div>'
   );
+}
+
+function hStandings(){
+  var rec={p:0,w:0,l:0,rs:0,ra:0,wt:0,wl:0};
+  M.forEach(function(m){
+    if(m.status!=='completed') return;
+    var tealBat=null, tealBowl=null;
+    m.innings.forEach(function(inn){
+      if(inn.bat==='WPC Teal') tealBat=inn;
+      if(inn.bowl==='WPC Teal') tealBowl=inn;
+    });
+    if(!tealBat||!tealBowl) return;
+    rec.p++;
+    rec.rs+=tealBat.total;
+    rec.ra+=tealBowl.total;
+    rec.wt+=tealBowl.wkts||0;
+    rec.wl+=tealBat.wkts||0;
+    var tealScore=tealBat.total+(tealBowl.bonus||0);
+    var oppScore=tealBowl.total+(tealBat.bonus||0);
+    if(tealScore>oppScore) rec.w++; else rec.l++;
+  });
+  var rows='';
+  M.forEach(function(m){
+    if(m.status!=='completed') return;
+    var tealBat=null, tealBowl=null;
+    m.innings.forEach(function(inn){
+      if(inn.bat==='WPC Teal') tealBat=inn;
+      if(inn.bowl==='WPC Teal') tealBowl=inn;
+    });
+    if(!tealBat||!tealBowl) return;
+    var won=(tealBat.total+(tealBowl.bonus||0))>(tealBowl.total+(tealBat.bonus||0));
+    var opp=m.t1.name==='WPC Teal'?m.t2.name:m.t1.name;
+    rows+='<tr>'+
+      '<td style="text-align:left;padding:7px 10px 7px 0">Rd '+m.round+' vs '+opp+'</td>'+
+      '<td class="num" style="color:'+(won?'#1a5e36':'#c0392b')+'">'+tealBat.total+'</td>'+
+      '<td class="num">'+tealBowl.wkts+'</td>'+
+    '</tr>';
+  });
+  return '<div class="sc-block">'+
+    '<div class="sc-title">WPC Teal — Season Record</div>'+
+    '<table class="sc-tbl" style="width:100%">'+
+      '<thead><tr>'+
+        '<th style="text-align:left">Match</th>'+
+        '<th>RS</th>'+
+        '<th>WT</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tfoot><tr style="border-top:2px solid #ddd">'+
+        '<td style="text-align:left;padding:8px 10px 6px 0;font-weight:700">Total ('+rec.p+' game'+(rec.p!==1?'s':'')+', '+rec.w+'W '+rec.l+'L)</td>'+
+        '<td class="num" style="font-weight:700;color:#1a5e36">'+rec.rs+'</td>'+
+        '<td class="num" style="font-weight:700">'+rec.wt+'</td>'+
+      '</tr></tfoot>'+
+    '</table>'+
+  '</div>';
 }
 
 function hSeasonStats(){
