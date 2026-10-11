@@ -949,6 +949,22 @@ async function queueMatchUpdate(payload){
   }catch(e){}
 }
 
+// Keyboard PIN entry
+document.addEventListener('keydown',function(e){
+  if(S.screen!=='pin')return;
+  if(e.key>='0'&&e.key<='9'){e.preventDefault();pinKey(e.key);}
+  else if(e.key==='Backspace'){e.preventDefault();pinKey('⌫');}
+});
+
+// Warn on refresh/close during active scoring
+var SCORING_SCREENS=['scoring','endover','changebowler','endinnings'];
+window.addEventListener('beforeunload',function(e){
+  if(SCORING_SCREENS.indexOf(S.screen)>=0){
+    e.preventDefault();
+    e.returnValue='';
+  }
+});
+
 r();
 </script>
 </body>
