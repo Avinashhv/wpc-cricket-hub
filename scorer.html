@@ -203,6 +203,7 @@ function r(){
   else if(scr==='setup')    rSetup();
   else if(scr==='scoring')  rScoring();
   else if(scr==='endover')  rEndOver();
+  else if(scr==='changebowler') rChangeBowler();
   else if(scr==='endinnings') rEndInnings();
   else if(scr==='done')     rDone();
 }
@@ -574,6 +575,7 @@ function rScoring(){
     '<div class="bowrow">'+
       '<span class="bow-name">'+S.bowler+'</span>'+
       '<span class="bow-stat">'+bowOv+' ov &bull; '+bws.r+'r &bull; '+bws.w+'w</span>'+
+      (ovBalls.length===0?'<button class="btn" style="font-size:11px;padding:4px 10px;background:rgba(255,255,255,.15);border:none;border-radius:8px;color:#fff;cursor:pointer;margin-left:6px" onclick="S.screen=\'changebowler\';r()">Change</button>':'')+
     '</div>'+
     ballBtns+
     (!inningsDone&&!S.retirePending?
@@ -733,6 +735,32 @@ function pickBowler(name){
   S.endOverPending=false;
   // Swap ends at end of over
   var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;
+  S.screen='scoring';r();
+}
+
+function rChangeBowler(){
+  var ovNum=Math.floor(S.balls.length/OVER_SIZE);
+  var opts=S.bowlOrder.map(function(n){
+    var bw=S.bws[n]||{balls:0,r:0,w:0};
+    var ovsUsed=Math.floor(bw.balls/OVER_SIZE);
+    var dis=ovsUsed>=4;
+    return '<div class="bow-opt'+(dis?' dis':'')+'" onclick="setNewBowler(\''+n+'\')">'+
+      '<span style="font-weight:700;font-size:15px">'+n+(n===S.bowler?' ✓':' ')+'</span>'+
+      '<span style="font-size:12px;opacity:.6">'+ovsUsed+'/4 overs</span>'+
+    '</div>';
+  }).join('');
+  set('<div class="hdr">'+
+    '<span class="hdr-back" onclick="S.screen=\'scoring\';r()">←</span>'+
+    '<div class="hdr-title">Change Bowler — Over '+(ovNum+1)+'</div>'+
+  '</div>'+
+  '<div class="scr">'+
+    '<div style="font-size:13px;opacity:.6;text-align:center">No balls bowled yet — select new bowler</div>'+
+    opts+
+  '</div>');
+}
+function setNewBowler(name){
+  S.prevBowler=S.bowler;
+  S.bowler=name;
   S.screen='scoring';r();
 }
 
