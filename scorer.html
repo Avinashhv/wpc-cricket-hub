@@ -106,6 +106,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .sum-row:last-child{border:none}
 
 .badge-live{background:#e53935;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:3px;letter-spacing:.3px;display:inline-block}
+.fab{position:fixed;bottom:24px;right:20px;width:56px;height:56px;border-radius:50%;background:#f5a623;color:#0d2b1a;font-size:30px;font-weight:300;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100}
+.fab:active{transform:scale(.92)}
 </style>
 </head>
 <body>
@@ -186,6 +188,9 @@ var S={
 
   // Setup wizard
   sz:{step:0,batFirstIdx:-1,batTxt:'',bowlTxt:''},
+
+  // Add match modal
+  showAddMatch:false,
 };
 
 function r(){
@@ -245,6 +250,18 @@ function loadMatches(){
       r();
     });
 }
+var KNOWN_TEAMS=[
+  {name:'WPC Teal',    short:'TEAL',logo:'WPC', cls:'logo-wpc'},
+  {name:'BSK Cubs Bronze',short:'BSK',logo:'BSK',cls:'logo-bsk'},
+  {name:'WPC Yellow',  short:'YLW', logo:'WPY', cls:'logo-wpcy'},
+  {name:'WPC Aqua',    short:'AQA', logo:'WPA', cls:'logo-wpa'},
+  {name:'Souths Hawks',short:'SH',  logo:'SH',  cls:'logo-sh'},
+];
+function teamObj(name){
+  return KNOWN_TEAMS.find(function(t){return t.name===name;})||
+    {name:name,short:name.substring(0,3).toUpperCase(),logo:name.substring(0,3).toUpperCase(),cls:'logo-def'};
+}
+
 function rMatches(){
   var cards=S.matches.length
     ? S.matches.map(function(m){
@@ -258,11 +275,57 @@ function rMatches(){
         '</div>';
       }).join('')
     : '<div style="text-align:center;opacity:.4;padding:50px 0;font-size:14px">No upcoming matches</div>';
+
+  var teamOpts=KNOWN_TEAMS.map(function(t){return '<option>'+t.name+'</option>';}).join('');
+
+  var modal=S.showAddMatch?
+    '<div class="overlay" onclick="S.showAddMatch=false;r()">'+
+      '<div class="mbox" onclick="event.stopPropagation()" style="gap:10px">'+
+        '<div class="mbox-title">Add Match</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+          '<div><div class="lbl">Round</div><input class="inp" id="am-rnd" type="number" placeholder="5" style="padding:10px"></div>'+
+          '<div><div class="lbl">Date</div><input class="inp" id="am-date" placeholder="Sat 7 Nov" style="padding:10px"></div>'+
+        '</div>'+
+        '<div><div class="lbl">Time</div><input class="inp" id="am-time" placeholder="8:00 AM" style="padding:10px"></div>'+
+        '<div><div class="lbl">Venue</div><input class="inp" id="am-venue" placeholder="West Synthetic" style="padding:10px"></div>'+
+        '<div><div class="lbl">Team 1</div><select class="inp" id="am-t1">'+teamOpts+'</select></div>'+
+        '<div><div class="lbl">Team 2</div><select class="inp" id="am-t2"><option selected>WPC Teal</option>'+teamOpts+'</select></div>'+
+        '<div class="mbtns" style="margin-top:4px">'+
+          '<button class="mbtn mbtn-no" onclick="S.showAddMatch=false;r()">Cancel</button>'+
+          '<button class="mbtn mbtn-ok" onclick="saveNewMatch()">Add Match</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'
+  :'';
+
   set('<div class="hdr">'+
     '<span class="hdr-back" onclick="S.screen=\'pin\';S.pin=\'\';r()">←</span>'+
     '<div class="hdr-title">Select Match</div>'+
   '</div>'+
-  '<div class="scr">'+cards+'</div>');
+  '<div class="scr" style="padding-bottom:80px">'+cards+'</div>'+
+  '<button class="fab" onclick="S.showAddMatch=true;r()">+</button>'+
+  modal);
+}
+
+async function saveNewMatch(){
+  var rnd=parseInt((document.getElementById('am-rnd')||{}).value||'0');
+  var date=(document.getElementById('am-date')||{}).value||'';
+  var time=(document.getElementById('am-time')||{}).value||'';
+  var venue=(document.getElementById('am-venue')||{}).value||'';
+  var t1name=(document.getElementById('am-t1')||{}).value||'';
+  var t2name=(document.getElementById('am-t2')||{}).value||'';
+  if(!rnd||!date||!t1name||!t2name){alert('Fill in round, date and both teams');return;}
+  if(t1name===t2name){alert('Teams must be different');return;}
+  var t1=teamObj(t1name), t2=teamObj(t2name);
+  var datetime=''+date+' at '+time+' (local time)';
+  var res=await db.from('matches').insert({
+    round:rnd,date:date,time:time,datetime:datetime,venue:venue||'TBC',
+    grade:"MSW Stage 1 Super 7's",status:'upcoming',
+    t1:t1,t2:t2,result:null
+  });
+  if(res.error){alert('Error: '+res.error.message);return;}
+  S.showAddMatch=false;
+  loadMatches();
 }
 function pickMatch(id){
   S.match=S.matches.find(function(m){return m.id===id;});
