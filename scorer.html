@@ -323,8 +323,10 @@ async function saveNewMatch(){
   if(t1name===t2name){alert('Teams must be different');return;}
   var t1=teamObj(t1name), t2=teamObj(t2name);
   var datetime=''+date+' at '+time+' (local time)';
+  var idRes=await db.from('matches').select('id').order('id',{ascending:false}).limit(1);
+  var nextId=idRes.data&&idRes.data.length?(idRes.data[0].id+1):100;
   var res=await db.from('matches').insert({
-    round:rnd,date:date,time:time,datetime:datetime,venue:venue||'TBC',
+    id:nextId,round:rnd,date:date,time:time,datetime:datetime,venue:venue||'TBC',
     grade:"MSW Stage 1 Super 7's",status:'upcoming',
     t1:t1,t2:t2,result:null
   });
