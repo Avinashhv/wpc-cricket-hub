@@ -322,7 +322,51 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,statBat:true,statBowl:false,listTab:'fixture'};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,statBat:true,statBowl:false,listTab:'fixture'};
+
+var KNOWN_TEAMS=[
+  {name:'WPC Teal',    short:'TEAL',logo:'WPC', cls:'logo-wpc'},
+  {name:'BSK Cubs Bronze',short:'BSK',logo:'BSK',cls:'logo-bsk'},
+  {name:'WPC Yellow',  short:'YLW', logo:'WPY', cls:'logo-wpcy'},
+  {name:'WPC Aqua',    short:'AQA', logo:'WPA', cls:'logo-wpa'},
+  {name:'Souths Hawks',short:'SH',  logo:'SH',  cls:'logo-sh'},
+  {name:'North Hawks', short:'NH',  logo:'NH',  cls:'logo-sh'},
+];
+function teamObj(name){
+  return KNOWN_TEAMS.find(function(t){return t.name===name;})||
+    {name:name,short:name.substring(0,3).toUpperCase(),logo:name.substring(0,3).toUpperCase(),cls:'logo-def'};
+}
+
+async function saveNewMatchHub(){
+  var rnd=parseInt((document.getElementById('hm-rnd')||{}).value||'0');
+  var date=(document.getElementById('hm-date')||{}).value||'';
+  var time=(document.getElementById('hm-time')||{}).value||'18:00';
+  var venue=(document.getElementById('hm-venue')||{}).value||'';
+  var t1name=(document.getElementById('hm-t1')||{}).value||'';
+  var t2name=(document.getElementById('hm-t2')||{}).value||'';
+  if(!rnd||!date||!t1name||!t2name){alert('Fill in round, date and both teams');return;}
+  if(t1name===t2name){alert('Teams must be different');return;}
+  var t1=teamObj(t1name), t2=teamObj(t2name);
+  var datetime=''+date+' at '+time+' (local time)';
+  var idRes=await db.from('matches').select('id').order('id',{ascending:false}).limit(1);
+  var nextId=idRes.data&&idRes.data.length?(idRes.data[0].id+1):100;
+  var res=await db.from('matches').insert({
+    id:nextId,round:rnd,date:date,time:time,datetime:datetime,venue:venue||'TBC',
+    grade:"MSW Stage 1 Super 7's",status:'upcoming',t1:t1,t2:t2,result:null
+  });
+  if(res.error){alert('Error: '+res.error.message);return;}
+  S.showAddMatch=false;
+  loadData();
+}
+
+async function deleteMatch(id){
+  if(!confirm('Delete this match and all its data? This cannot be undone.'))return;
+  await db.from('match_docs').delete().eq('match_id',id);
+  await db.from('innings').delete().eq('match_id',id);
+  await db.from('matches').delete().eq('id',id);
+  S.view='list';S.mid=null;
+  loadData();
+}
 
 function getM(id){return M.find(m=>m.id===id);}
 function sr(r,b){return b?(r/b*100).toFixed(1):'0.0';}
@@ -338,7 +382,36 @@ function extStr(e){
 // ── renderers ──
 
 function hList(){
-  var rows=M.map(function(m){
+  // Sort: live first, then upcoming by round, then completed by round
+  var statusOrd={live:0,upcoming:1,completed:2};
+  var sorted=M.slice().sort(function(a,b){
+    var pa=statusOrd[a.status]!==undefined?statusOrd[a.status]:1;
+    var pb=statusOrd[b.status]!==undefined?statusOrd[b.status]:1;
+    if(pa!==pb)return pa-pb;
+    return a.round-b.round;
+  });
+
+  // Add Match modal
+  var teamOpts=KNOWN_TEAMS.map(function(t){return '<option value="'+t.name+'">'+t.name+'</option>';}).join('');
+  var addModal=S.showAddMatch?(
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:flex-end" onclick="S.showAddMatch=false;render()">'+
+      '<div class="modal" style="width:100%;border-radius:16px 16px 0 0;padding-bottom:max(20px,env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
+        '<div class="modal-title">Add Match</div>'+
+        '<div class="modal-field"><label>Round</label><input id="hm-rnd" type="number" class="modal-inp" placeholder="5"></div>'+
+        '<div class="modal-field"><label>Date</label><input id="hm-date" type="text" class="modal-inp" placeholder="Sat 7 Nov 2026"></div>'+
+        '<div class="modal-field"><label>Time</label><input id="hm-time" type="text" class="modal-inp" placeholder="7:45 AM"></div>'+
+        '<div class="modal-field"><label>Venue</label><input id="hm-venue" type="text" class="modal-inp" placeholder="Yeronga Oval #1"></div>'+
+        '<div class="modal-field"><label>Team 1</label><select id="hm-t1" class="modal-inp"><option value="">Select…</option>'+teamOpts+'</select></div>'+
+        '<div class="modal-field"><label>Team 2</label><select id="hm-t2" class="modal-inp"><option value="">Select…</option>'+teamOpts+'</select></div>'+
+        '<div class="modal-btns">'+
+          '<button class="modal-btn modal-btn-cancel" onclick="S.showAddMatch=false;render()">Cancel</button>'+
+          '<button class="modal-btn modal-btn-add" onclick="saveNewMatchHub()">Add Match</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'
+  ):'';
+
+  var rows=sorted.map(function(m){
     var teamsHtml;
     if(m.status==='completed'){
       var i0=m.innings[0],i1=m.innings[1];
@@ -431,7 +504,10 @@ function hList(){
             '<div class="grade-link">Fixture ›</div>'+
           '</div>'+rows
       )+
-    '</div>'
+    '</div>'+
+    (S.listTab==='fixture'?
+      '<button class="fab" onclick="S.showAddMatch=true;render()">+</button>':'')+
+    addModal
   );
 }
 
@@ -512,7 +588,11 @@ function hDetail(mid){
       '<div class="tab'+(S.tab==='lineups'?' on':'')+'" onclick="setTab(\'lineups\')">LINEUPS</div>'+
     '</div>'+
     toggleHtml+
-    '<div class="pb">'+bodyHtml+'</div>'
+    '<div class="pb">'+bodyHtml+
+      '<div style="padding:16px 0 8px;text-align:center">'+
+        '<button onclick="deleteMatch('+m.id+')" style="background:none;border:none;color:#ccc;font-size:12px;cursor:pointer;text-decoration:underline">Delete match</button>'+
+      '</div>'+
+    '</div>'
   );
 }
 
