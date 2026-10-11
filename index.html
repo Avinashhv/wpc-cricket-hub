@@ -462,12 +462,13 @@ function hDetail(mid){
 }
 
 function hScorecard(inn){
+  var hasRe=inn.batters.some(function(b){return b.re!=null;});
   var batRows=inn.batters.map(function(b){
     return (
       '<tr>'+
         '<td><div class="bat-name">'+b.n+'</div><div class="bat-dis">'+b.d+'</div></td>'+
         '<td class="num-bold">'+b.r+'</td>'+
-        '<td class="num" style="color:#1a5e36;font-weight:700">'+(b.re!=null?b.re:'-')+'</td>'+
+        (hasRe?'<td class="num" style="color:#1a5e36;font-weight:700">'+b.re+'</td>':'')+
         '<td class="num">'+b.b+'</td>'+
         '<td class="num">'+b.fs+'</td>'+
         '<td class="num">'+b.sx+'</td>'+
@@ -494,7 +495,8 @@ function hScorecard(inn){
     '<div class="sc-block">'+
       '<div class="sc-hdr">'+inn.bat.toUpperCase()+' &ndash; BATTING</div>'+
       '<table class="sc-tbl">'+
-        '<tr><th>BATTER</th><th>R</th><th title="Runs scored with extras">+E</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
+        '<tr><th>BATTER</th><th>R</th>'+(hasRe?'<th title="Runs scored with extras">+E</th>':'')+
+        '<th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
         batRows+
       '</table>'+
       '<div class="sc-extras"><span>Extras '+extStr(inn.extras)+'</span><span>'+inn.extras.tot+'</span></div>'+
@@ -711,12 +713,13 @@ function hStatus(m){
     if(b.fs!==a.fs)return b.fs-a.fs;
     return b.sx-a.sx;
   });
+  var hasReStat=sortedBat.some(function(b){return b.re!=null;});
   var batRows=sortedBat.map(function(b){
     var sr=b.b?(b.r/b.b*100).toFixed(1):'0.0';
     return '<tr>'+
       '<td><div class="bat-name">'+b.n+'</div><div class="bat-dis">'+(b.d||'-')+'</div></td>'+
       '<td class="num-bold">'+b.r+'</td>'+
-      '<td class="num" style="color:#1a5e36;font-weight:700">'+(b.re!=null?b.re:'-')+'</td>'+
+      (hasReStat?'<td class="num" style="color:#1a5e36;font-weight:700">'+(b.re!=null?b.re:'-')+'</td>':'')+
       '<td class="num">'+b.b+'</td>'+
       '<td class="num">'+(b.fs||0)+'</td>'+
       '<td class="num">'+(b.sx||0)+'</td>'+
@@ -749,7 +752,8 @@ function hStatus(m){
         '</div>'+
         (S.statBat?
           '<table class="sc-tbl">'+
-            '<tr><th>BATTER</th><th>R</th><th title="Runs scored with extras">+E</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
+            '<tr><th>BATTER</th><th>R</th>'+(hasReStat?'<th title="Runs scored with extras">+E</th>':'')+
+            '<th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
             batRows+
           '</table>'
         :'')+
