@@ -303,7 +303,7 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,statBat:true,statBowl:false};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,statBat:true,statBowl:false,listTab:'fixture'};
 
 function getM(id){return M.find(m=>m.id===id);}
 function sr(r,b){return b?(r/b*100).toFixed(1):'0.0';}
@@ -375,16 +375,18 @@ function hList(){
       '</div>'+
     '</div>'+
     '<div class="tabs">'+
-      '<div class="tab on">FIXTURE</div>'+
-      '<div class="tab">STANDINGS</div>'+
-      '<div class="tab">STATS</div>'+
+      '<div class="tab'+(S.listTab==='fixture'?' on':'')+'" onclick="setListTab(\'fixture\')">FIXTURE</div>'+
+      '<div class="tab'+(S.listTab==='standings'?' on':'')+'" onclick="setListTab(\'standings\')">STANDINGS</div>'+
+      '<div class="tab'+(S.listTab==='stats'?' on':'')+'" onclick="setListTab(\'stats\')">STATS</div>'+
     '</div>'+
     '<div class="pb">'+
-      '<div class="grade-bar">'+
-        '<div><div class="grade-lbl">Grade</div><div class="grade-name">MSW Stage 1 Super 7\'s</div></div>'+
-        '<div class="grade-link">Fixture ›</div>'+
-      '</div>'+
-      rows+
+      (S.listTab==='stats'
+        ? hSeasonStats()
+        : '<div class="grade-bar">'+
+            '<div><div class="grade-lbl">Grade</div><div class="grade-name">MSW Stage 1 Super 7\'s</div></div>'+
+            '<div class="grade-link">Fixture ›</div>'+
+          '</div>'+rows
+      )+
     '</div>'
   );
 }
@@ -454,7 +456,6 @@ function hDetail(mid){
       '<div class="tab'+(S.tab==='summary'?' on':'')+'" onclick="setTab(\'summary\')">SUMMARY</div>'+
       '<div class="tab'+(S.tab==='docs'?' on':'')+'" onclick="setTab(\'docs\')">MATCH DOCS</div>'+
       '<div class="tab'+(S.tab==='lineups'?' on':'')+'" onclick="setTab(\'lineups\')">LINEUPS</div>'+
-      (m.teamStatus?'<div class="tab'+(S.tab==='status'?' on':'')+'" onclick="setTab(\'status\')">STATUS</div>':'')+
     '</div>'+
     toggleHtml+
     '<div class="pb">'+bodyHtml+'</div>'
@@ -695,6 +696,100 @@ function hLineups(m){
   );
 }
 
+function hSeasonStats(){
+  var batAgg={}, bowlAgg={};
+  M.forEach(function(m){
+    if(m.status!=='completed') return;
+    m.innings.forEach(function(inn){
+      if(inn.bat==='WPC Teal'){
+        (inn.batters||[]).forEach(function(b){
+          if(!batAgg[b.n]) batAgg[b.n]={n:b.n,r:0,re:null,b:0,fs:0,sx:0};
+          batAgg[b.n].r+=b.r||0;
+          if(b.re!=null){batAgg[b.n].re=(batAgg[b.n].re||0)+b.re;}
+          batAgg[b.n].b+=b.b||0;
+          batAgg[b.n].fs+=b.fs||0;
+          batAgg[b.n].sx+=b.sx||0;
+        });
+      }
+      if(inn.bowl==='WPC Teal'){
+        (inn.bowlers||[]).forEach(function(b){
+          if(!bowlAgg[b.n]) bowlAgg[b.n]={n:b.n,o:0,r:0,w:0};
+          bowlAgg[b.n].o+=parseFloat(b.o)||0;
+          bowlAgg[b.n].r+=b.r||0;
+          bowlAgg[b.n].w+=b.w||0;
+        });
+      }
+    });
+  });
+  // Two separate sorted lists for the two scoring methods
+  var batByR=Object.values(batAgg).sort(function(a,b){return b.r-a.r;});
+  var batByRe=Object.values(batAgg).filter(function(b){return b.re!=null;}).sort(function(a,b){return b.re-a.re;});
+  var batRowsR=batByR.map(function(b){
+    var sr=b.b?(b.r/b.b*100).toFixed(1):'0.0';
+    return '<tr>'+
+      '<td><div class="bat-name">'+b.n+'</div></td>'+
+      '<td class="num-bold">'+b.r+'</td>'+
+      '<td class="num">'+b.b+'</td>'+
+      '<td class="num">'+b.fs+'</td>'+
+      '<td class="num">'+b.sx+'</td>'+
+      '<td class="num">'+sr+'</td>'+
+    '</tr>';
+  }).join('');
+  var batRowsRe=batByRe.map(function(b){
+    var sr=b.b?(b.re/b.b*100).toFixed(1):'0.0';
+    return '<tr>'+
+      '<td><div class="bat-name">'+b.n+'</div></td>'+
+      '<td class="num-bold" style="color:#1a5e36">'+b.re+'</td>'+
+      '<td class="num">'+b.b+'</td>'+
+      '<td class="num">'+b.fs+'</td>'+
+      '<td class="num">'+b.sx+'</td>'+
+      '<td class="num">'+sr+'</td>'+
+    '</tr>';
+  }).join('');
+  var bowlers=Object.values(bowlAgg).sort(function(a,b){
+    if(b.w!==a.w) return b.w-a.w;
+    var eA=a.o?a.r/a.o:99, eB=b.o?b.r/b.o:99;
+    return eA-eB;
+  });
+  var bowlRows=bowlers.map(function(b){
+    var ec=b.o?(b.r/b.o).toFixed(1):'-';
+    return '<tr>'+
+      '<td><div class="bat-name">'+b.n+'</div></td>'+
+      '<td class="num">'+b.o+'</td>'+
+      '<td class="num">'+b.r+'</td>'+
+      '<td class="num-bold">'+b.w+'</td>'+
+      '<td class="num">'+ec+'</td>'+
+    '</tr>';
+  }).join('');
+  return (
+    '<div class="status-block">'+
+      '<div class="sc-block" style="margin:12px 0 1px">'+
+        '<div class="sc-hdr">WPC TEAL &ndash; RUNS OFF BAT</div>'+
+        '<table class="sc-tbl">'+
+          '<tr><th>BATTER</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
+          batRowsR+
+        '</table>'+
+      '</div>'+
+      (batRowsRe?
+        '<div class="sc-block" style="margin:1px 0 1px">'+
+          '<div class="sc-hdr">WPC TEAL &ndash; RUNS SCORED IN TOTAL</div>'+
+          '<table class="sc-tbl">'+
+            '<tr><th>BATTER</th><th>+E</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
+            batRowsRe+
+          '</table>'+
+        '</div>'
+      :'')+
+      '<div class="sc-block" style="margin:1px 0 12px">'+
+        '<div class="sc-hdr">WPC TEAL &ndash; BOWLING STATS</div>'+
+        '<table class="sc-tbl">'+
+          '<tr><th>BOWLER</th><th>O</th><th>R</th><th>W</th><th>ECON</th></tr>'+
+          bowlRows+
+        '</table>'+
+      '</div>'+
+    '</div>'
+  );
+}
+
 function hStatus(m){
   if(!m.teamStatus){return '<div class="coming-soon">No status data for this match</div>';}
   var ts=m.teamStatus;
@@ -780,6 +875,7 @@ function toggleStatSec(s){if(s==='bat')S.statBat=!S.statBat;else S.statBowl=!S.s
 function openM(id){S.view='match';S.mid=id;S.tab='summary';S.inn=0;S.docFile=null;render();scrollTo(0,0);}
 function goBack(){S.view='list';S.mid=null;S.docFile=null;render();scrollTo(0,0);}
 function setTab(t){S.tab=t;S.docFile=null;render();}
+function setListTab(t){S.listTab=t;render();scrollTo(0,0);}
 function setInn(i){S.inn=i;render();}
 
 function saveNav(){
