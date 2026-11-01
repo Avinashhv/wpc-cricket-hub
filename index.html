@@ -40,6 +40,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:3px;letter-spacing:.3px;white-space:nowrap}
 .badge-upcoming{background:#e3f2fd;color:#1565c0}
 .badge-completed{background:#e8f5e9;color:#2a7d32}
+.badge-abandoned{background:#f5f5f5;color:#999}
 .badge-live{background:#e53935;color:#fff;animation:livepulse 1.4s infinite}
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.6}}
 .badge-inv-upcoming{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)}
@@ -362,6 +363,14 @@ async function saveNewMatchHub(){
   loadData();
 }
 
+async function abandonMatchFromHub(id,e){
+  e.stopPropagation();
+  if(!confirm('Mark this match as abandoned? No balls bowled.'))return;
+  var res=await db.from('matches').update({status:'abandoned'}).eq('id',id);
+  if(res.error){alert('Error: '+res.error.message);return;}
+  loadData();
+}
+
 async function deleteMatch(id){
   if(!confirm('Delete this match and all its data? This cannot be undone.'))return;
   await db.from('match_docs').delete().eq('match_id',id);
@@ -552,7 +561,10 @@ function hList(){
           '<div class="team-name">'+m.t2.name+'</div>'+
         '</div>'+
         '</div>'+
-        '<div style="padding:8px 14px"><a href="scorer.html" style="display:inline-block;background:#1a5e36;color:#fff;font-size:12px;font-weight:800;padding:6px 16px;border-radius:6px;text-decoration:none;letter-spacing:.3px" onclick="event.stopPropagation()">🏏 SCORE THIS MATCH</a></div>';
+        '<div style="padding:8px 14px;display:flex;gap:8px;align-items:center">'+
+          '<a href="scorer.html" style="display:inline-block;background:#1a5e36;color:#fff;font-size:12px;font-weight:800;padding:6px 16px;border-radius:6px;text-decoration:none;letter-spacing:.3px" onclick="event.stopPropagation()">🏏 SCORE THIS MATCH</a>'+
+          '<button onclick="abandonMatchFromHub('+m.id+',event)" style="background:none;border:1px solid #ccc;color:#888;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;cursor:pointer;letter-spacing:.3px">✕ Abandon</button>'+
+        '</div>';
     }
     return (
       '<div class="round-hdr"><span class="round-ttl">Round '+m.round+'</span><span class="round-dt">'+m.date+'</span></div>'+
