@@ -383,14 +383,24 @@ async function saveEditResult(){
   var i1overs=document.getElementById('er-i1-overs').value.trim()||'20.0';
   var i0bonus=i0wkts*4;
   var i1bonus=i1wkts*4;
+  // Update inn1 if it exists
   if(ei0){
     var r0=await db.from('innings').update({total:i0runs,wkts:i0wkts,bonus:i1bonus,overs:i0overs}).eq('id',ei0.id);
     if(r0.error){alert('Error inn1: '+r0.error.message);return;}
   }
+  // Update or create inn2
   if(ei1){
     var r1=await db.from('innings').update({total:i1runs,wkts:i1wkts,bonus:i0bonus,overs:i1overs}).eq('id',ei1.id);
     if(r1.error){alert('Error inn2: '+r1.error.message);return;}
+  } else {
+    // Inn2 doesn't exist yet — insert it
+    var batTeam2=ei0?ei0.bowl:m.t2.name;
+    var bowlTeam2=ei0?ei0.bat:m.t1.name;
+    var r1b=await db.from('innings').insert({match_id:m.id,innings_num:2,bat:batTeam2,bowl:bowlTeam2,total:i1runs,wkts:i1wkts,bonus:i0bonus,overs:i1overs});
+    if(r1b.error){alert('Error creating inn2: '+r1b.error.message);return;}
   }
+  // Mark match completed
+  await db.from('matches').update({status:'completed'}).eq('id',m.id);
   S.showEditResult=false;S.editResultMid=null;
   loadData();
 }
@@ -616,7 +626,10 @@ function hList(){
           (liveInn.bat===m.t2.name?'<div class="team-score"><div class="tscore">'+liveInn.total+'/'+liveInn.wkts+'</div><div class="tbonus">'+liveInn.overs+' ov</div></div>':'')+
         '</div>'+
         '</div>'+
-        '<div style="padding:8px 14px"><a href="scorer.html" style="display:inline-block;background:#e53935;color:#fff;font-size:12px;font-weight:800;padding:6px 16px;border-radius:6px;text-decoration:none;letter-spacing:.3px" onclick="event.stopPropagation()">● LIVE SCORE</a></div>';
+        '<div style="padding:8px 14px;display:flex;gap:8px;align-items:center">'+
+          '<a href="scorer.html" style="display:inline-block;background:#e53935;color:#fff;font-size:12px;font-weight:800;padding:6px 16px;border-radius:6px;text-decoration:none;letter-spacing:.3px" onclick="event.stopPropagation()">● LIVE SCORE</a>'+
+          '<button onclick="openEditResult('+m.id+',event)" style="background:none;border:1px solid #bbb;color:#555;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;cursor:pointer">✎ Enter Batting</button>'+
+        '</div>';
     } else {
       teamsHtml=
         '<div class="card-teams">'+
