@@ -414,8 +414,8 @@ function rSetup(){
     var bt=sz.batFirstIdx===0?m.t1.name:m.t2.name;
     var blt=sz.batFirstIdx===0?m.t2.name:m.t1.name;
     var inn2=S.innNum===2;
-    var roAttr=inn2?' readonly style="opacity:.65;cursor:default"':'';
-    var roNote=inn2?'<div style="font-size:11px;opacity:.5;margin-bottom:8px">Carried over from Innings 1 — edit only to correct a name</div>':'';
+    var roAttr='';
+    var roNote=inn2?'<div style="font-size:11px;opacity:.5;margin-bottom:8px">Carried over from Innings 1 — update as needed</div>':'';
     set(hdr+'<div class="scr">'+
       roNote+
       '<div>'+
