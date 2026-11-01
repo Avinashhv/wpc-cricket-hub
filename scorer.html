@@ -411,8 +411,8 @@ function rSetup(){
     '</div>');
 
   } else if(sz.step===1){
-    var bt=sz.batFirstIdx===0?m.t1.name:m.t2.name;
-    var blt=sz.batFirstIdx===0?m.t2.name:m.t1.name;
+    var bt=sz.batTeamName||(sz.batFirstIdx===0?m.t1.name:m.t2.name);
+    var blt=sz.bowlTeamName||(sz.batFirstIdx===0?m.t2.name:m.t1.name);
     var inn2=S.innNum===2;
     var roAttr='';
     var roNote=inn2?'<div style="font-size:11px;opacity:.5;margin-bottom:8px">Carried over from Innings 1 — update as needed</div>':'';
@@ -944,7 +944,9 @@ function startInn2(){
   S.innId=null;
   var prevSz=S.sz;
   // Carry inn1 orders across (swapped): inn1 bowlers bat in inn2, inn1 batters bowl in inn2
+  // Store team names directly to avoid batFirstIdx/t1/t2 confusion
   S.sz={step:1,batFirstIdx:1-prevSz.batFirstIdx,
+    batTeamName:S.batTeam, bowlTeamName:S.bowlTeam,
     batTxt:S.bowlOrder.join('\n'),
     bowlTxt:S.batOrder.join('\n')};
   S.screen='setup';r();
