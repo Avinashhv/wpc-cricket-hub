@@ -138,6 +138,7 @@ var BD={
   '4': {bat:4,ex:0,re:4,w:0,b:0,nb:0},
   '6': {bat:6,ex:0,re:6,w:0,b:0,nb:0},
   'W': {bat:0,ex:1,re:1,w:1,b:0,nb:0},
+  '1W':{bat:0,ex:2,re:2,w:2,b:0,nb:0,sc:1}, // wide + batter ran 1 → 2 runs, strike changes
   '2W':{bat:0,ex:3,re:3,w:3,b:0,nb:0},
   '4W':{bat:0,ex:5,re:5,w:5,b:0,nb:0},
   'B': {bat:0,ex:1,re:1,w:0,b:1,nb:0},
@@ -598,6 +599,7 @@ function rScoring(){
       '<button class="bb bb-4"  onclick="ball(\'4\')">4</button>'+
       '<button class="bb bb-6"  onclick="ball(\'6\')">6</button>'+
       '<button class="bb bb-wide" onclick="ball(\'W\')">W</button>'+
+      '<button class="bb bb-wide" onclick="ball(\'1W\')">1W</button>'+
       '<button class="bb bb-wide" onclick="ball(\'2W\')">2W</button>'+
       '<button class="bb bb-wide" onclick="ball(\'4W\')">4W</button>'+
       '<button class="bb bb-bye" onclick="ball(\'B\')">B</button>'+
@@ -692,9 +694,10 @@ function applyBall(b,sign){
     if(b.isWkt)bw.w+=sign;
   }
 
-  // Strike rotation on odd bat runs
-  if(b.bat%2===1&&sign>0){var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;}
-  if(b.bat%2===1&&sign<0){var tmp2=S.batOn;S.batOn=S.batOff;S.batOff=tmp2;}
+  // Strike rotation on odd bat runs, or explicit sc flag (e.g. 1W: wide + 1 run)
+  var shouldSwap=(b.bat%2===1)||!!(BD[b.type]||{}).sc;
+  if(shouldSwap&&sign>0){var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;}
+  if(shouldSwap&&sign<0){var tmp2=S.batOn;S.batOn=S.batOff;S.batOff=tmp2;}
 }
 
 function checkAfterBall(){
@@ -939,13 +942,13 @@ function editBall(idx,newType){
 
 function ballChipLabel(b){
   if(b.isWkt)return '⊗';
-  var m={'W':'W','2W':'2W','4W':'4W','B':'B','2B':'2B','4B':'4B','N':'NB','.':'•'};
+  var m={'W':'W','1W':'1W','2W':'2W','4W':'4W','B':'B','2B':'2B','4B':'4B','N':'NB','.':'•'};
   return m[b.type]!==undefined?m[b.type]:b.type;
 }
 function ballChipColor(b){
   if(b.isWkt)return '#c0392b';
   if(b.type==='4'||b.type==='6')return '#1a5e36';
-  if(b.type==='W'||b.type==='2W'||b.type==='4W')return '#e67e22';
+  if(b.type==='W'||b.type==='1W'||b.type==='2W'||b.type==='4W')return '#e67e22';
   if(b.type==='B'||b.type==='2B'||b.type==='4B')return '#7f8c8d';
   if(b.type==='N')return '#8e44ad';
   if(b.type==='.')return '#555';
@@ -958,7 +961,7 @@ function rEditOvers(){
   var pickerHtml='';
   if(S.editBallIdx!==null){
     var eb=S.balls[S.editBallIdx];
-    var types=['.','1','2','3','4','6','W','2W','4W','B','2B','4B','N'];
+    var types=['.','1','2','3','4','6','W','1W','2W','4W','B','2B','4B','N'];
     pickerHtml='<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-end" onclick="S.editBallIdx=null;r()">'+
       '<div style="background:#1a1a1a;width:100%;padding:16px;border-radius:16px 16px 0 0" onclick="event.stopPropagation()">'+
         '<div style="font-size:13px;font-weight:700;opacity:.6;margin-bottom:12px">Change ball '+(S.editBallIdx+1)+
