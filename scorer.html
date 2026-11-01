@@ -53,7 +53,9 @@ select.inp option{background:#1a4a2a;color:#fff}
 .batrow{background:rgba(255,255,255,.07);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .bat{text-align:center;flex:1}
 .bat-name{font-size:14px;font-weight:700}
-.bat-stat{font-size:11px;opacity:.65;margin-top:2px}
+.bat-stat{font-size:11px;margin-top:2px}
+.bat-runs{font-size:18px;font-weight:800;color:#fff}
+.bat-balls{font-size:12px;opacity:.6;margin-left:3px}
 .bat-strike .bat-name::after{content:'*';color:#f5a623;margin-left:3px}
 .swap-btn{background:rgba(255,255,255,.12);border:none;color:#fff;padding:7px 11px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
 
@@ -631,12 +633,12 @@ function rScoring(){
     '<div class="batrow">'+
       '<div class="bat bat-strike">'+
         '<div class="bat-name">'+S.batOn+'</div>'+
-        '<div class="bat-stat">'+bs.r+'('+bs.b+'b) +E:'+bs.re+'</div>'+
+        '<div class="bat-stat"><span class="bat-runs">'+bs.re+'</span><span class="bat-balls">('+bs.b+')</span></div>'+
       '</div>'+
       '<button class="swap-btn" onclick="swapBat()">SWAP ⇄</button>'+
       '<div class="bat">'+
         '<div class="bat-name">'+S.batOff+'</div>'+
-        '<div class="bat-stat">'+bsOff.r+'('+bsOff.b+'b) +E:'+bsOff.re+'</div>'+
+        '<div class="bat-stat"><span class="bat-runs">'+bsOff.re+'</span><span class="bat-balls">('+bsOff.b+')</span></div>'+
       '</div>'+
     '</div>'+
     '<div class="bowrow">'+
