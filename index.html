@@ -325,7 +325,7 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture'};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null};
 var PLAYHQ_DEFAULT_URL='https://www.playhq.com/cricket-australia/org/wpc-cricket-club/7b159ec9/msw-pre-christmas-junior-competition-summer-202627/teams/wpc-teal/6bed293c';
 
 var KNOWN_TEAMS=[
@@ -360,6 +360,38 @@ async function saveNewMatchHub(){
   });
   if(res.error){alert('Error: '+res.error.message);return;}
   S.showAddMatch=false;
+  loadData();
+}
+
+function openEditResult(id,e){
+  e.stopPropagation();
+  S.editResultMid=id;
+  S.showEditResult=true;
+  render();
+}
+
+async function saveEditResult(){
+  var m=M.find(function(x){return x.id===S.editResultMid;});
+  if(!m)return;
+  var ei0=m.innings[0];
+  var ei1=m.innings[1];
+  var i0runs=parseInt(document.getElementById('er-i0-runs').value)||0;
+  var i0wkts=parseInt(document.getElementById('er-i0-wkts').value)||0;
+  var i0overs=document.getElementById('er-i0-overs').value.trim()||'20.0';
+  var i1runs=parseInt(document.getElementById('er-i1-runs').value)||0;
+  var i1wkts=parseInt(document.getElementById('er-i1-wkts').value)||0;
+  var i1overs=document.getElementById('er-i1-overs').value.trim()||'20.0';
+  var i0bonus=i0wkts*4;
+  var i1bonus=i1wkts*4;
+  if(ei0){
+    var r0=await db.from('innings').update({total:i0runs,wkts:i0wkts,bonus:i1bonus,overs:i0overs}).eq('id',ei0.id);
+    if(r0.error){alert('Error inn1: '+r0.error.message);return;}
+  }
+  if(ei1){
+    var r1=await db.from('innings').update({total:i1runs,wkts:i1wkts,bonus:i0bonus,overs:i1overs}).eq('id',ei1.id);
+    if(r1.error){alert('Error inn2: '+r1.error.message);return;}
+  }
+  S.showEditResult=false;S.editResultMid=null;
   loadData();
 }
 
@@ -505,6 +537,40 @@ function hList(){
     '</div>'
   ):'';
 
+  // Edit Result modal
+  var editResultModal='';
+  if(S.showEditResult&&S.editResultMid){
+    var em=M.find(function(x){return x.id===S.editResultMid;});
+    if(em){
+      var ei0=em.innings[0]||{bat:em.t1.name,bowl:em.t2.name,total:0,wkts:0,overs:'20.0'};
+      var ei1=em.innings[1]||{bat:em.t2.name,bowl:em.t1.name,total:0,wkts:0,overs:'20.0'};
+      editResultModal=
+        '<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:flex-end" onclick="S.showEditResult=false;render()">'+
+          '<div class="modal" style="width:100%;border-radius:16px 16px 0 0;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:85vh;overflow-y:auto" onclick="event.stopPropagation()">'+
+            '<div class="modal-title">Edit Match Result</div>'+
+            '<div style="font-size:12px;font-weight:700;opacity:.5;margin-bottom:4px">'+ei0.bat+' batting (Inn 1)</div>'+
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'+
+              '<div><label style="font-size:11px;opacity:.6">Runs</label><input id="er-i0-runs" type="number" class="modal-inp" value="'+ei0.total+'"></div>'+
+              '<div><label style="font-size:11px;opacity:.6">Wkts lost</label><input id="er-i0-wkts" type="number" class="modal-inp" value="'+ei0.wkts+'"></div>'+
+              '<div><label style="font-size:11px;opacity:.6">Overs</label><input id="er-i0-overs" type="text" class="modal-inp" value="'+(ei0.overs||'20.0')+'"></div>'+
+            '</div>'+
+            '<div style="font-size:11px;opacity:.5;margin-bottom:12px">Wkts taken by '+ei0.bowl+' (for bonus): <strong id="er-i0-bonus-label">'+ei0.wkts*4+'</strong> — enter wkts lost above</div>'+
+            '<div style="font-size:12px;font-weight:700;opacity:.5;margin-bottom:4px">'+ei1.bat+' batting (Inn 2)</div>'+
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'+
+              '<div><label style="font-size:11px;opacity:.6">Runs</label><input id="er-i1-runs" type="number" class="modal-inp" value="'+ei1.total+'"></div>'+
+              '<div><label style="font-size:11px;opacity:.6">Wkts lost</label><input id="er-i1-wkts" type="number" class="modal-inp" value="'+ei1.wkts+'"></div>'+
+              '<div><label style="font-size:11px;opacity:.6">Overs</label><input id="er-i1-overs" type="text" class="modal-inp" value="'+(ei1.overs||'20.0')+'"></div>'+
+            '</div>'+
+            '<div style="font-size:11px;opacity:.5;margin-bottom:16px">Bonus = wkts lost × 4 per innings</div>'+
+            '<div class="modal-btns">'+
+              '<button class="modal-btn modal-btn-cancel" onclick="S.showEditResult=false;render()">Cancel</button>'+
+              '<button class="modal-btn modal-btn-add" onclick="saveEditResult()">Save</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+    }
+  }
+
   var rows=sorted.map(function(m){
     var teamsHtml;
     if(m.status==='completed'){
@@ -530,8 +596,10 @@ function hList(){
           '<div class="tbonus">+'+t1Inn.bonus+' bonus</div></div>'+
         '</div>'+
         '</div>'+
-        '<div class="card-result">'+cardWinner+' won &bull; '+
-          Math.max(t1Score,t2Score)+' vs '+Math.min(t1Score,t2Score)+'</div>';
+        '<div class="card-result" style="display:flex;align-items:center;justify-content:space-between">'+
+          '<span>'+cardWinner+' won &bull; '+Math.max(t1Score,t2Score)+' vs '+Math.min(t1Score,t2Score)+'</span>'+
+          '<button onclick="openEditResult('+m.id+',event)" style="background:none;border:1px solid #bbb;color:#555;font-size:11px;font-weight:700;padding:3px 10px;border-radius:5px;cursor:pointer">✎ Edit</button>'+
+        '</div>';
     } else if(m.status==='live' && m.innings && m.innings.length>0){
       var liveInn=m.innings[m.innings.length-1];
       var liveBonus=liveInn.wkts*4;
@@ -605,7 +673,7 @@ function hList(){
     (S.listTab==='fixture'?
       '<button class="fab" onclick="S.showAddMatch=true;render()">+</button>'+
       '<button class="fab fab-sync" onclick="S.showSyncModal=true;S.syncResult=null;render()" title="Sync from PlayHQ">↺</button>':'')+
-    addModal+syncModal
+    addModal+syncModal+editResultModal
   );
 }
 
