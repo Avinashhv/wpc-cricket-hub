@@ -148,7 +148,8 @@ var BD={
 
 // ── State ──
 var S={
-  screen:'pin',     // pin|matches|setup|scoring|endover|endinnings|done
+  screen:'pin',     // pin|matches|setup|scoring|endover|endinnings|editovers|done
+  editBallIdx:null, // index of ball being edited in editovers screen
   pin:'',
   matches:[],
   match:null,
@@ -207,6 +208,7 @@ function r(){
   else if(scr==='endover')  rEndOver();
   else if(scr==='changebowler') rChangeBowler();
   else if(scr==='endinnings') rEndInnings();
+  else if(scr==='editovers')  rEditOvers();
   else if(scr==='done')     rDone();
 }
 function set(html){document.getElementById('app').innerHTML=html;}
@@ -893,6 +895,123 @@ function endInnings(){
   });
 }
 
+// ─────────────────────────────────────────────
+// EDIT OVERS (break-time correction)
+// ─────────────────────────────────────────────
+function replayInnings(){
+  // Reset all running totals and per-player stats then replay every ball
+  S.total=0;S.wkts=0;S.exW=0;S.exB=0;S.exNB=0;
+  S.batOrder.forEach(function(n){
+    S.bs[n]=Object.assign({},S.bs[n]||{},{r:0,re:0,b:0,fs:0,sx:0,wkts:0});
+    // preserve retired/recalled/d from before (dismissal descriptions stand)
+  });
+  S.bowlOrder.forEach(function(n){S.bws[n]={balls:0,r:0,w:0};});
+  S.balls.forEach(function(b){
+    // recalculate bat/re/tot from current type
+    var bd=BD[b.type]||{bat:0,ex:0,re:0,w:0,b:0,nb:0};
+    b.bat=bd.bat; b.re=bd.re; b.tot=bd.bat+bd.ex;
+    // apply
+    S.total+=b.tot;
+    S.exW+=(bd.w||0);
+    S.exB+=(bd.b||0);
+    S.exNB+=(bd.nb||0);
+    if(b.isWkt)S.wkts++;
+    var bs=S.bs[b.batter];
+    if(bs){bs.b++;bs.r+=b.bat;bs.re+=b.re;if(b.bat===4)bs.fs++;if(b.bat===6)bs.sx++;if(b.isWkt)bs.wkts++;}
+    var bw=S.bws[b.bowler];
+    if(bw){bw.balls++;bw.r+=b.tot;if(b.isWkt)bw.w++;}
+  });
+}
+
+function editBall(idx,newType){
+  if(!BD[newType])return;
+  S.balls[idx].type=newType;
+  replayInnings();
+  // Refresh inn1 snapshot so the end-innings screen shows correct totals
+  if(S.innNum===1){
+    S.inn1={bat:S.batTeam,bowl:S.bowlTeam,
+      total:S.total,wkts:S.wkts,bonus:S.wkts*WKT_BONUS,
+      overs:oversStr(S.balls.length)};
+  }
+  S.editBallIdx=null;
+  saveToDB(r);
+}
+
+function ballChipLabel(b){
+  if(b.isWkt)return '⊗';
+  var m={'W':'W','2W':'2W','4W':'4W','B':'B','2B':'2B','4B':'4B','N':'NB','.':'•'};
+  return m[b.type]!==undefined?m[b.type]:b.type;
+}
+function ballChipColor(b){
+  if(b.isWkt)return '#c0392b';
+  if(b.type==='4'||b.type==='6')return '#1a5e36';
+  if(b.type==='W'||b.type==='2W'||b.type==='4W')return '#e67e22';
+  if(b.type==='B'||b.type==='2B'||b.type==='4B')return '#7f8c8d';
+  if(b.type==='N')return '#8e44ad';
+  if(b.type==='.')return '#555';
+  return '#2471a3';
+}
+
+function rEditOvers(){
+  var OVER_SIZE=6;
+  var numOvers=S.balls.length?Math.floor((S.balls.length-1)/OVER_SIZE)+1:0;
+  var pickerHtml='';
+  if(S.editBallIdx!==null){
+    var eb=S.balls[S.editBallIdx];
+    var types=['.','1','2','3','4','6','W','2W','4W','B','2B','4B','N'];
+    pickerHtml='<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-end" onclick="S.editBallIdx=null;r()">'+
+      '<div style="background:#1a1a1a;width:100%;padding:16px;border-radius:16px 16px 0 0" onclick="event.stopPropagation()">'+
+        '<div style="font-size:13px;font-weight:700;opacity:.6;margin-bottom:12px">Change ball '+(S.editBallIdx+1)+
+          ' (Over '+(eb.ov+1)+', Batter: '+eb.batter+', Bowler: '+eb.bowler+')</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
+          types.map(function(t){
+            var sel=t===eb.type&&!eb.isWkt;
+            return '<button onclick="editBall('+S.editBallIdx+',\''+t+'\')" style="'+
+              'min-width:48px;height:48px;border-radius:10px;border:2px solid '+(sel?'#f5a623':'rgba(255,255,255,.2)')+';'+
+              'background:'+(sel?'rgba(245,166,35,.2)':'transparent')+';color:#fff;font-size:15px;font-weight:800;cursor:pointer">'+
+              (t==='.'?'•':t)+'</button>';
+          }).join('')+
+        '</div>'+
+        (eb.isWkt?'<div style="font-size:11px;color:#f88;margin-top:8px">⊗ This ball has a wicket. Changing type adjusts runs but wicket is kept.</div>':'')+
+        '<button onclick="S.editBallIdx=null;r()" style="margin-top:12px;width:100%;padding:12px;background:#333;color:#fff;border:none;border-radius:10px;font-size:15px;cursor:pointer">Cancel</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  var overs='';
+  for(var ov=0;ov<numOvers;ov++){
+    var ovBalls=S.balls.filter(function(b){return b.ov===ov;});
+    var ovRuns=ovBalls.reduce(function(s,b){return s+b.tot+(b.isWkt?0:0);},0);
+    var ovWkts=ovBalls.filter(function(b){return b.isWkt;}).length;
+    var bowlerName=ovBalls.length?ovBalls[0].bowler:'';
+    overs+='<div style="margin-bottom:14px">'+
+      '<div style="font-size:12px;font-weight:700;opacity:.5;margin-bottom:6px">OVER '+(ov+1)+
+        ' &bull; '+bowlerName+' &bull; '+ovRuns+'r'+(ovWkts?' '+ovWkts+'w':'')+
+      '</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+        ovBalls.map(function(b){
+          var idx=S.balls.indexOf(b);
+          var col=ballChipColor(b);
+          var lbl=ballChipLabel(b);
+          return '<button onclick="S.editBallIdx='+idx+';r()" style="'+
+            'width:42px;height:42px;border-radius:50%;background:'+col+';color:#fff;'+
+            'border:none;font-size:13px;font-weight:800;cursor:pointer">'+lbl+'</button>';
+        }).join('')+
+      '</div>'+
+    '</div>';
+  }
+
+  set('<div class="hdr">'+
+    '<span class="hdr-back" onclick="S.editBallIdx=null;S.screen=\'endinnings\';r()">←</span>'+
+    '<div class="hdr-title">Review / Edit Overs</div>'+
+  '</div>'+
+  '<div class="scr" style="padding-bottom:80px">'+
+    '<div style="font-size:12px;opacity:.5;margin-bottom:14px">Tap any ball to correct it. Changes save automatically.</div>'+
+    (overs||'<div style="opacity:.4">No balls recorded.</div>')+
+  '</div>'+
+  pickerHtml);
+}
+
 function rEndInnings(){
   var inn=S.inn1;
   var bonus=inn.bonus;
@@ -905,6 +1024,7 @@ function rEndInnings(){
       '<div class="sum-row"><span>'+inn.bat+' score</span><span style="font-weight:800">'+inn.total+' + '+bonus+' = '+(inn.total+bonus)+'</span></div>'+
       '<div class="sum-row"><span>'+inn.bowl+' need</span><span style="font-weight:800;color:#f5a623">'+(inn.total+bonus+1)+' to win</span></div>'+
       '<button class="btn btn-gold" onclick="startInn2()">Start Innings 2 →</button>'+
+      '<button class="btn btn-dim" style="margin-top:8px" onclick="S.editBallIdx=null;S.screen=\'editovers\';r()">✎ Review / Edit Overs</button>'+
       '<button class="btn btn-dim" style="margin-top:8px;color:#ffaaaa" onclick="abandonMatch()">✕ Abandon Match</button>'+
     '</div>');
 }
