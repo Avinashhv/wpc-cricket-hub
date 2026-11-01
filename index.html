@@ -194,7 +194,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .lb-bnd{background:#1a5e36;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
 .lb-w{background:#e53935;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
 
-.pb{padding-bottom:60px}
+.pb{padding-bottom:80px}
+.fab{position:fixed;bottom:20px;right:16px;width:52px;height:52px;border-radius:50%;background:#1a5e36;color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:50}
+.fab-sync{right:76px;font-size:20px;background:#2d7a50}
 .loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:12px;color:#1a5e36}
 .loading-dot{width:10px;height:10px;border-radius:50%;background:#1a5e36;animation:ld .8s infinite alternate}
 @keyframes ld{from{opacity:.2}to{opacity:1}}
@@ -322,7 +324,8 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,statBat:true,statBowl:false,listTab:'fixture'};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture'};
+var PLAYHQ_DEFAULT_URL='https://www.playhq.com/cricket-australia/org/wpc-cricket-club/7b159ec9/msw-pre-christmas-junior-competition-summer-202627/teams/wpc-teal/6bed293c';
 
 var KNOWN_TEAMS=[
   {name:'WPC Teal',    short:'TEAL',logo:'WPC', cls:'logo-wpc'},
@@ -368,6 +371,49 @@ async function deleteMatch(id){
   loadData();
 }
 
+async function fetchPlayHQFixtures(){
+  S.syncLoading=true;S.syncResult=null;render();
+  var urlEl=document.getElementById('sync-url');
+  var playhqUrl=urlEl?urlEl.value.trim():PLAYHQ_DEFAULT_URL;
+  try{
+    var resp=await fetch('/api/sync-fixtures?url='+encodeURIComponent(playhqUrl));
+    var json=await resp.json();
+    if(!resp.ok||!json.ok){S.syncResult={error:json.error||'Fetch failed',keys:json.keys};S.syncLoading=false;render();return;}
+    // Mark each fixture: 'new' if no match with same round exists, else 'exists'
+    var existingRounds=new Set(M.map(function(m){return String(m.round);}));
+    var fixtures=json.fixtures.map(function(f){
+      return Object.assign({},f,{_status:existingRounds.has(String(f.round))?'exists':'new'});
+    });
+    S.syncResult={fixtures:fixtures};
+  }catch(e){S.syncResult={error:e.message};}
+  S.syncLoading=false;render();
+}
+
+async function importSyncedFixtures(){
+  var toImport=(S.syncResult&&S.syncResult.fixtures||[]).filter(function(f){return f._status==='new'&&f._selected!==false;});
+  if(!toImport.length){alert('No new fixtures to import');return;}
+  var idRes=await db.from('matches').select('id').order('id',{ascending:false}).limit(1);
+  var nextId=idRes.data&&idRes.data.length?(idRes.data[0].id+1):100;
+  var errors=[];
+  for(var f of toImport){
+    var opp=f.homeTeam==='WPC Teal'?f.awayTeam:f.homeTeam;
+    var t1=teamObj('WPC Teal'), t2=teamObj(opp||'TBC');
+    // Convert UTC time to AEST (UTC+10, QLD no DST)
+    var dtLocal=f.date&&f.time?new Date(f.date+'T'+f.time+':00Z'):null;
+    var localDate=dtLocal?new Date(dtLocal.getTime()+10*3600*1000).toISOString().slice(0,10):f.date||'TBC';
+    var localTime=dtLocal?new Date(dtLocal.getTime()+10*3600*1000).toISOString().slice(11,16):f.time||'';
+    var datetime=localDate+' at '+(localTime||'TBC')+' (local time)';
+    var res=await db.from('matches').insert({
+      id:nextId++,round:parseInt(f.round)||0,date:localDate,time:localTime,datetime:datetime,
+      venue:f.venue||'TBC',grade:"MSW Stage 1 Super 7's",status:'upcoming',t1:t1,t2:t2,result:null
+    });
+    if(res.error)errors.push('R'+f.round+': '+res.error.message);
+  }
+  if(errors.length)alert('Some errors:\n'+errors.join('\n'));
+  S.showSyncModal=false;S.syncResult=null;
+  loadData();
+}
+
 function getM(id){return M.find(m=>m.id===id);}
 function sr(r,b){return b?(r/b*100).toFixed(1):'0.0';}
 function extStr(e){
@@ -390,6 +436,45 @@ function hList(){
     if(pa!==pb)return pa-pb;
     return a.round-b.round;
   });
+
+  // Sync Fixtures modal
+  var syncBodyHtml='';
+  if(S.syncLoading){
+    syncBodyHtml='<div style="text-align:center;padding:20px;opacity:.6">Fetching from PlayHQ…</div>';
+  } else if(S.syncResult&&S.syncResult.error){
+    syncBodyHtml='<div style="color:#f88;padding:8px 0">Error: '+S.syncResult.error+'</div>'+
+      (S.syncResult.keys?'<div style="font-size:11px;opacity:.5">Keys: '+S.syncResult.keys.join(', ')+'</div>':'');
+  } else if(S.syncResult&&S.syncResult.fixtures){
+    var newFx=S.syncResult.fixtures.filter(function(f){return f._status==='new';});
+    var existFx=S.syncResult.fixtures.filter(function(f){return f._status==='exists';});
+    syncBodyHtml=(newFx.length?
+      '<div style="font-weight:700;margin-bottom:8px">'+newFx.length+' new fixture'+(newFx.length>1?'s':'')+' to import:</div>'+
+      newFx.map(function(f){
+        var opp=f.homeTeam==='WPC Teal'?f.awayTeam:f.homeTeam;
+        return '<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)">'+
+          '<span style="font-weight:700">R'+f.round+'</span> · '+f.date+' · WPC Teal vs '+opp+
+          (f.venue?' · '+f.venue:'')+
+        '</div>';
+      }).join('')+
+      '<div style="margin-top:12px"><button class="modal-btn modal-btn-add" onclick="importSyncedFixtures()">Import '+newFx.length+' Match'+(newFx.length>1?'es':'')+'</button></div>'
+    :'<div style="padding:8px 0;opacity:.6">All '+S.syncResult.fixtures.length+' fixtures already in hub.</div>')+
+    (existFx.length?'<div style="font-size:11px;opacity:.4;margin-top:8px">Already have: '+existFx.map(function(f){return 'R'+f.round;}).join(', ')+'</div>':'');
+  }
+  var syncModal=S.showSyncModal?(
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:flex-end" onclick="S.showSyncModal=false;render()">'+
+      '<div class="modal" style="width:100%;border-radius:16px 16px 0 0;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto" onclick="event.stopPropagation()">'+
+        '<div class="modal-title">Sync Fixtures from PlayHQ</div>'+
+        '<div class="modal-field"><label>PlayHQ URL</label><input id="sync-url" class="modal-inp" value="'+PLAYHQ_DEFAULT_URL+'" style="font-size:11px"></div>'+
+        (!S.syncLoading&&!S.syncResult?
+          '<div class="modal-btns">'+
+            '<button class="modal-btn modal-btn-cancel" onclick="S.showSyncModal=false;render()">Cancel</button>'+
+            '<button class="modal-btn modal-btn-add" onclick="fetchPlayHQFixtures()">Fetch Fixtures</button>'+
+          '</div>':'<div style="padding:0 0 8px">'+syncBodyHtml+'</div>'+
+          '<button class="modal-btn modal-btn-cancel" style="margin-top:8px" onclick="S.showSyncModal=false;S.syncResult=null;render()">Close</button>'
+        )+
+      '</div>'+
+    '</div>'
+  ):'';
 
   // Add Match modal
   var teamOpts=KNOWN_TEAMS.map(function(t){return '<option value="'+t.name+'">'+t.name+'</option>';}).join('');
@@ -506,8 +591,9 @@ function hList(){
       )+
     '</div>'+
     (S.listTab==='fixture'?
-      '<button class="fab" onclick="S.showAddMatch=true;render()">+</button>':'')+
-    addModal
+      '<button class="fab" onclick="S.showAddMatch=true;render()">+</button>'+
+      '<button class="fab fab-sync" onclick="S.showSyncModal=true;S.syncResult=null;render()" title="Sync from PlayHQ">↺</button>':'')+
+    addModal+syncModal
   );
 }
 
@@ -751,7 +837,7 @@ function docCard(d){
 function orderRows(order, keepers, twoOverBowler){
   return order.map(function(name,i){
     var isKeeper=keepers?(keepers.indexOf(name)>=0):false;
-    var isTwoOv=twoOverBowler?(name===twoOverBowler):false;
+    var isTwoOv=twoOverBowler?(Array.isArray(twoOverBowler)?twoOverBowler.indexOf(name)>=0:name===twoOverBowler):false;
     var keeperOvs=(keepers&&keepers[0]===name)?'WK 1-10':'WK 11-20';
     return (
       '<div class="status-player-row">'+
