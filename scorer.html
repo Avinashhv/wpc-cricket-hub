@@ -199,6 +199,7 @@ var S={
   wktRuns:0,
   widePopup:false,
   retiringBatter:'',
+  changeBatterSlot:null,
 
   // Supabase
   innId:null,
@@ -223,6 +224,7 @@ function r(){
   else if(scr==='scoring')  rScoring();
   else if(scr==='endover')  rEndOver();
   else if(scr==='changebowler') rChangeBowler();
+  else if(scr==='changebatter') rChangeBatter();
   else if(scr==='endinnings') rEndInnings();
   else if(scr==='editovers')  rEditOvers();
   else if(scr==='done')     rDone();
@@ -701,12 +703,18 @@ function rScoring(){
     '<div class="over-dots">'+(dots||'<span style="opacity:.25">· · · · · ·</span>')+'</div>'+
     '<div class="batrow">'+
       '<div class="bat bat-strike">'+
-        '<div class="bat-name">'+S.batOn+'</div>'+
+        '<div style="display:flex;align-items:center;justify-content:center;gap:5px">'+
+          '<div class="bat-name">'+S.batOn+'</div>'+
+          '<button onclick="S.changeBatterSlot=\'batOn\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>'+
+        '</div>'+
         '<div class="bat-stat"><span class="bat-runs">'+bs.re+'</span><span class="bat-balls">('+bs.b+')</span></div>'+
       '</div>'+
       '<button class="swap-btn" onclick="swapBat()">SWAP ⇄</button>'+
       '<div class="bat">'+
-        '<div class="bat-name">'+S.batOff+'</div>'+
+        '<div style="display:flex;align-items:center;justify-content:center;gap:5px">'+
+          '<div class="bat-name">'+S.batOff+'</div>'+
+          '<button onclick="S.changeBatterSlot=\'batOff\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>'+
+        '</div>'+
         '<div class="bat-stat"><span class="bat-runs">'+bsOff.re+'</span><span class="bat-balls">('+bsOff.b+')</span></div>'+
       '</div>'+
     '</div>'+
@@ -971,6 +979,48 @@ function setNewBowler(name){
   S.prevBowler=S.bowler;
   S.bowler=name;
   S.screen='scoring';r();
+}
+
+function rChangeBatter(){
+  var slot=S.changeBatterSlot;
+  var current=slot==='batOn'?S.batOn:S.batOff;
+  var opts=S.batOrder.map(function(n){
+    var bs2=S.bs[n]||{b:0,r:0};
+    var onField=(n===S.batOn||n===S.batOff);
+    var dis=onField;
+    var detail=onField?'on field':bs2.b>0?(bs2.r+'r '+bs2.b+'b'):'yet to bat';
+    return '<div class="bow-opt'+(dis?' dis':'')+'" onclick="setNewBatter(\''+n+'\')">'+
+      '<span style="font-weight:700;font-size:15px">'+n+'</span>'+
+      '<span style="font-size:12px;opacity:.6">'+detail+'</span>'+
+    '</div>';
+  }).join('');
+  set('<div class="hdr">'+
+    '<span class="hdr-back" onclick="S.changeBatterSlot=null;S.screen=\'scoring\';r()">←</span>'+
+    '<div class="hdr-title">Change Batter</div>'+
+  '</div>'+
+  '<div class="scr">'+
+    '<div style="font-size:13px;opacity:.6;text-align:center;margin-bottom:12px">Replacing: <strong style="color:#fff">'+current+'</strong> ('+(slot==='batOn'?'★ striker':'non-striker')+')</div>'+
+    opts+
+  '</div>');
+}
+function setNewBatter(name){
+  var slot=S.changeBatterSlot;
+  if(!slot)return;
+  var old=slot==='batOn'?S.batOn:S.batOff;
+  if(name===old||name===S.batOn||name===S.batOff){S.changeBatterSlot=null;S.screen='scoring';r();return;}
+  // Transfer stats from old to new batter
+  S.bs[name]=Object.assign({},S.bs[old]||{r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false,recalled:false});
+  S.bs[old]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false,recalled:false};
+  // Update ball history so stats replay correctly
+  S.balls.forEach(function(b){if(b.batter===old)b.batter=name;});
+  // Swap positions in batOrder so old batter comes up at new batter's slot
+  var oi=S.batOrder.indexOf(old), ni=S.batOrder.indexOf(name);
+  if(oi>=0&&ni>=0){S.batOrder[oi]=name;S.batOrder[ni]=old;}
+  // Update the batting slot
+  if(slot==='batOn')S.batOn=name;else S.batOff=name;
+  S.changeBatterSlot=null;
+  S.screen='scoring';
+  saveToDB(r);
 }
 
 // ─────────────────────────────────────────────
@@ -1303,7 +1353,7 @@ document.addEventListener('keydown',function(e){
 });
 
 // Warn on refresh/close during active scoring
-var SCORING_SCREENS=['scoring','endover','changebowler','endinnings'];
+var SCORING_SCREENS=['scoring','endover','changebowler','changebatter','endinnings'];
 window.addEventListener('beforeunload',function(e){
   if(SCORING_SCREENS.indexOf(S.screen)>=0){
     e.preventDefault();
