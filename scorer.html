@@ -359,17 +359,18 @@ async function saveNewMatch(){
 async function pickMatch(id){
   S.match=S.matches.find(function(m){return m.id===id;});
   if(!S.match)return;
-  // For live matches, check Supabase for a resumable innings
-  if(S.match.status==='live'){
-    set('<div class="hdr"><div class="hdr-title">Loading…</div></div><div class="scr" style="padding:30px;text-align:center;opacity:.5">Checking live innings…</div>');
+  // Check for a resumable innings for any in-progress match
+  if(S.match.status!=='completed'&&S.match.status!=='abandoned'){
+    set('<div class="hdr"><div class="hdr-title">Loading…</div></div><div class="scr" style="padding:30px;text-align:center;opacity:.5">Checking innings…</div>');
     var res=await db.from('innings').select('*').eq('match_id',id).order('id',{ascending:false}).limit(1);
     if(!res.error&&res.data&&res.data.length){
       var inn=res.data[0];
       var st=inn.scorer_state;
-      if(st&&st.balls&&st.balls.length>0){
-        var ballCount=st.balls.length;
+      // Resume if the innings is set up (batOrder exists) even if balls were all undone
+      if(st&&st.batOrder&&st.batOrder.length>0){
+        var ballCount=(st.balls&&st.balls.length)||0;
         var ov=Math.floor(ballCount/6)+'.'+ballCount%6;
-        S.pendingResume={inn:inn,st:st,ov:ov};
+        S.pendingResume={inn:inn,st:st,ov:ov,ballCount:ballCount};
         S.screen='resume'; r(); return;
       }
     }
@@ -395,9 +396,9 @@ function rResume(){
     '<div style="text-align:center">'+
       '<div style="font-size:14px;opacity:.6;margin-bottom:6px">In Progress</div>'+
       '<div style="font-size:48px;font-weight:900;line-height:1">'+inn.total+'/'+inn.wkts+'</div>'+
-      '<div style="font-size:16px;opacity:.7;margin-top:4px">Over '+ov+' &bull; '+inn.bat+'</div>'+
+      '<div style="font-size:16px;opacity:.7;margin-top:4px">'+(pr.ballCount>0?'Over '+ov:inn.bat+' batting')+' &bull; '+inn.bat+'</div>'+
     '</div>'+
-    '<button class="btn btn-gold" style="width:100%;max-width:320px;font-size:16px;padding:16px" onclick="doResume()">▶ Resume from over '+ov+'</button>'+
+    '<button class="btn btn-gold" style="width:100%;max-width:320px;font-size:16px;padding:16px" onclick="doResume()">'+(pr.ballCount>0?'▶ Resume from over '+ov:'▶ Continue innings setup')+'</button>'+
     '<button class="btn btn-dim" style="width:100%;max-width:320px;font-size:14px" onclick="doStartFresh()">✕ Discard & Start Fresh</button>'+
   '</div>');
 }
