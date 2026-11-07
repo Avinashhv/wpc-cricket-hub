@@ -492,7 +492,7 @@ function rSetup(){
         var v=vals[i]||'';
         h+='<div style="'+rowStyle+'">'+
           '<div style="'+numStyle+'">'+(i+1)+'.</div>'+
-          '<input id="'+prefix+'-p-'+(i+1)+'" style="'+inpStyle+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="'+(i<2?'Required':'Optional')+'">'+
+          '<input id="'+prefix+'-p-'+(i+1)+'" style="'+inpStyle+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="'+(i<5?'Required':'Optional')+'">'+
         '</div>';
       }
       return h;
@@ -532,8 +532,8 @@ function setupSaveOrders(){
   S.sz.batTxt=bt;S.sz.bowlTxt=bl;
   var batList=bt.split('\n').map(function(x){return x.trim();}).filter(Boolean);
   var bowlList=bl.split('\n').map(function(x){return x.trim();}).filter(Boolean);
-  if(batList.length<2){alert('Enter at least 2 batters');return;}
-  if(bowlList.length<1){alert('Enter at least 1 bowler');return;}
+  if(batList.length<5){alert('Enter at least 5 batters');return;}
+  if(bowlList.length<5){alert('Enter at least 5 bowlers');return;}
   S.sz.step=2;r();
 }
 function syncBatterSelects(){
