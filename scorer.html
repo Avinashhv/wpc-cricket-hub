@@ -501,11 +501,11 @@ function rSetup(){
       roNote+
       '<div style="margin-bottom:14px">'+
         '<div class="lbl">'+bt+' — Batting Order</div>'+
-        makeRows('bat',8,batLines)+
+        makeRows('bat',10,batLines)+
       '</div>'+
       '<div style="margin-bottom:14px">'+
         '<div class="lbl">'+blt+' — Bowling Order</div>'+
-        makeRows('bowl',7,bowlLines)+
+        makeRows('bowl',10,bowlLines)+
       '</div>'+
       '<button class="btn btn-gold" onclick="setupSaveOrders()">Next →</button>'+
     '</div>');
@@ -526,8 +526,8 @@ function rSetup(){
 }
 function setupSaveOrders(){
   var batVals=[],bowlVals=[];
-  for(var i=1;i<=8;i++){var el=document.getElementById('bat-p-'+i);if(el&&el.value.trim())batVals.push(el.value.trim());}
-  for(var i=1;i<=7;i++){var el=document.getElementById('bowl-p-'+i);if(el&&el.value.trim())bowlVals.push(el.value.trim());}
+  for(var i=1;i<=10;i++){var el=document.getElementById('bat-p-'+i);if(el&&el.value.trim())batVals.push(el.value.trim());}
+  for(var i=1;i<=10;i++){var el=document.getElementById('bowl-p-'+i);if(el&&el.value.trim())bowlVals.push(el.value.trim());}
   var bt=batVals.join('\n'), bl=bowlVals.join('\n');
   S.sz.batTxt=bt;S.sz.bowlTxt=bl;
   var batList=bt.split('\n').map(function(x){return x.trim();}).filter(Boolean);
