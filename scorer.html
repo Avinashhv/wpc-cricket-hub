@@ -200,6 +200,7 @@ var S={
   bws:{}, // bowlStats: {name:{balls,r,w}}
 
   // Flags
+  lastPairMaxMsg:'',
   retirePending:false,
   endOverPending:false,
   showWkt:false,
@@ -431,7 +432,7 @@ function doResume(){
   S.bs=st.bs||{}; S.bws=st.bws||{};
   S.wktRuns=st.wktRuns||0; S.inn1=st.inn1||null;
   S.retireAt=st.retireAt||calcRetireAt(S.batOrder.length);
-  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.nbPopup=false; S.byePopup=false; S.retiringBatter='';
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.nbPopup=false; S.byePopup=false; S.retiringBatter=''; S.lastPairMaxMsg='';
   S.pendingResume=null;
   S.screen='scoring'; r();
 }
@@ -593,10 +594,10 @@ async function startInnings(){
   if(S.batNextIdx<0)S.batNextIdx=batList.length;
 
   S.balls=[]; S.total=0; S.wkts=0; S.exW=0; S.exB=0; S.exNB=0;
-  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.nbPopup=false; S.byePopup=false; S.retiringBatter='';
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.nbPopup=false; S.byePopup=false; S.retiringBatter=''; S.lastPairMaxMsg='';
 
   S.bs={}; S.bws={};
-  batList.forEach(function(n){S.bs[n]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false,quotaNotified:false};});
+  batList.forEach(function(n){S.bs[n]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false,quotaNotified:false,maxed:false};});
   bowlList.forEach(function(n){S.bws[n]={balls:0,r:0,w:0};});
 
   // Update match to live
@@ -743,6 +744,10 @@ function rScoring(){
     '</div>';
   }
 
+  var lastPairBar=S.lastPairMaxMsg?
+    '<div style="background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.4);border-radius:8px;padding:7px 12px;text-align:center;font-size:12px;color:#f5a623;margin-bottom:8px">⚡ '+S.lastPairMaxMsg+'</div>':
+    '';
+
   var ballBtns=inningsDone?
     '<button class="btn btn-gold" onclick="endInnings()">End Innings '+S.innNum+'</button>'
     :
@@ -812,6 +817,7 @@ function rScoring(){
       '<span class="bow-stat">'+bowOv+' ov &bull; '+bws.r+'r &bull; '+bws.w+'w</span>'+
       (ovBalls.length===0?'<button class="btn" style="font-size:11px;padding:4px 10px;background:rgba(255,255,255,.15);border:none;border-radius:8px;color:#fff;cursor:pointer;margin-left:6px" onclick="S.screen=\'changebowler\';r()">Change</button>':'')+
     '</div>'+
+    lastPairBar+
     ballBtns+
     '<div class="bowl-over-strip">'+
       '<span class="bow-strip-name">'+S.bowler+'</span>'+
@@ -875,6 +881,8 @@ function applyBall(b,sign){
   var shouldSwap=(b.bat%2===1)||!!(BD[b.type]||{}).sc;
   if(shouldSwap&&sign>0){var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;}
   if(shouldSwap&&sign<0){var tmp2=S.batOn;S.batOn=S.batOff;S.batOff=tmp2;}
+  // Last pair: if maxed batter ended up on strike after rotation, put them back at non-striker
+  if(sign>0&&S.bs[S.batOn]&&S.bs[S.batOn].maxed){var tmx=S.batOn;S.batOn=S.batOff;S.batOff=tmx;}
 }
 
 function checkAfterBall(){
@@ -888,6 +896,14 @@ function checkAfterBall(){
     bs.quotaNotified=true; // prevent re-triggering if scorer chooses Continue
     S.retirePending=true;
     S.retiringBatter=lastBatter;
+  }
+  // Last pair: redirect all remaining balls to the other batter
+  if(bs&&bs.b>=retireAt&&!bs.recalled&&!bs.maxed&&lastPair){
+    bs.maxed=true;
+    bs.quotaNotified=true;
+    if(S.batOn===lastBatter){var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;}
+    var other=(lastBatter===S.batOn?S.batOff:S.batOn);
+    S.lastPairMaxMsg=lastBatter+' has reached quota — '+other+' will face all remaining balls';
   }
   // Check end of over
   if(totalBalls%OVER_SIZE===0){
@@ -952,9 +968,13 @@ function undoBall(){
   applyBall(b,-1);
   // applyBall handles odd-run strike rotation; for even-run wickets we need to undo the unconditional wicket swap
   if(b.isWkt&&b.bat%2===0){var tw=S.batOn;S.batOn=S.batOff;S.batOff=tw;}
-  // Fix retired flag
+  // Fix retired/maxed flags
   var bs=S.bs[b.batter];
-  if(bs&&bs.b<(S.retireAt||RETIRE_AT))bs.retired=false;
+  if(bs&&bs.b<(S.retireAt||RETIRE_AT)){
+    bs.retired=false;
+    if(bs.maxed){bs.maxed=false;S.lastPairMaxMsg='';}
+    bs.quotaNotified=false;
+  }
   if(bs&&bs.wkts<1&&bs.d&&bs.d!=='retired')bs.d='';
   saveToDB(r);
 }
@@ -1311,7 +1331,7 @@ function startInn2(){
   var tmp=S.batTeam;S.batTeam=S.bowlTeam;S.bowlTeam=tmp;
   // Reset innings state
   S.balls=[];S.total=0;S.wkts=0;S.exW=0;S.exB=0;S.exNB=0;
-  S.retirePending=false;S.endOverPending=false;S.showWkt=false;S.widePopup=false;S.nbPopup=false;S.byePopup=false;S.retiringBatter='';
+  S.retirePending=false;S.endOverPending=false;S.showWkt=false;S.widePopup=false;S.nbPopup=false;S.byePopup=false;S.retiringBatter='';S.lastPairMaxMsg='';
   S.innId=null;
   var prevSz=S.sz;
   // Carry inn1 orders across (swapped): inn1 bowlers bat in inn2, inn1 batters bowl in inn2
