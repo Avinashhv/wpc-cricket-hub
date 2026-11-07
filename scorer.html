@@ -492,8 +492,8 @@ async function doStartFresh(){
     }).eq('id',inn.id);
   }
   S.discardPending=false;
+  S.innId=inn?inn.id:S.innId; // keep the existing row ID so startInnings reuses it
   S.pendingResume=null;
-  S.innId=null;
   try{localStorage.removeItem('wpc-inn-q');}catch(e){}
   if(innNum===2&&st){
     // Reset only innings 2 — keep innings 1 result intact
@@ -676,18 +676,29 @@ async function startInnings(){
   // Update match to live
   await queueMatchUpdate({status:'live'});
 
-  // Create innings row
-  var res=await db.from('innings').insert({
+  // Reuse existing innings row if available — avoids duplicate rows on reset/restart
+  var reuseId=S.innId||null;
+  if(!reuseId&&S.match&&S.match.id){
+    var chk=await db.from('innings').select('id').eq('match_id',S.match.id).eq('innings_num',S.innNum).order('id',{ascending:false}).limit(1);
+    if(!chk.error&&chk.data&&chk.data.length) reuseId=chk.data[0].id;
+  }
+  var innPayload={
     match_id:S.match.id,innings_num:S.innNum,
     bat:batTeam,bowl:bowlTeam,
     total:0,wkts:0,overs:'0.0',
     extras:{w:0,b:0,lb:0,nb:0,tot:0},bonus:0,
-    batters:batList.map(function(n){return {n:n,r:0,re:0,b:0,fs:0,sx:0,d:''};}),
-    bowlers:bowlList.map(function(n){return {n:n,o:'0.0',r:0,w:0,ec:0};}),
+    batters:batList.map(function(n){return {n:n,r:0,re:0,b:0,fs:0,sx:0,d:''}}),
+    bowlers:bowlList.map(function(n){return {n:n,o:'0.0',r:0,w:0,ec:0}}),
     scorer_state:null
-  }).select().single();
-  if(res.error){console.error('innings insert',res.error);}
-  else S.innId=res.data.id;
+  };
+  if(reuseId){
+    await db.from('innings').update(innPayload).eq('id',reuseId);
+    S.innId=reuseId;
+  } else {
+    var res=await db.from('innings').insert(innPayload).select().single();
+    if(res.error){console.error('innings insert',res.error);}
+    else S.innId=res.data.id;
+  }
 
   S.screen='scoring';r();
 }
@@ -1146,13 +1157,14 @@ async function resetInnings(){
   if(S.innId){
     await db.from('innings').update(emptyPayload).eq('id',S.innId);
   }
+  var keptInnId=S.innId; // keep the row ID so startInnings reuses it
   S.balls=[];S.total=0;S.wkts=0;S.exW=0;S.exB=0;S.exNB=0;
   S.retirePending=false;S.endOverPending=false;S.showWkt=false;
   S.widePopup=false;S.nbPopup=false;S.byePopup=false;
   S.retiringBatter='';S.lastPairMaxMsg='';S.resetPending=false;
   S.bs={};S.bws={};S.batNextIdx=0;
   S.batOn='';S.batOff='';S.bowler='';S.prevBowler='';
-  S.innId=null;
+  S.innId=keptInnId; // preserved — startInnings will reuse this row
   try{localStorage.removeItem('wpc-inn-q');}catch(e){}
   S.sz={step:1,
     batFirstIdx:S.sz?S.sz.batFirstIdx:0,
