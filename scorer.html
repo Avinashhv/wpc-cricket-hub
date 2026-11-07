@@ -358,7 +358,7 @@ async function pickMatch(id){
   // For live matches, check Supabase for a resumable innings
   if(S.match.status==='live'){
     set('<div class="hdr"><div class="hdr-title">Loading…</div></div><div class="scr" style="padding:30px;text-align:center;opacity:.5">Checking live innings…</div>');
-    var res=await db.from('innings').select('*').eq('match_id',id).order('innings_num',{ascending:false}).limit(1);
+    var res=await db.from('innings').select('*').eq('match_id',id).order('id',{ascending:false}).limit(1);
     if(!res.error&&res.data&&res.data.length){
       var inn=res.data[0];
       var st=inn.scorer_state;
@@ -367,7 +367,7 @@ async function pickMatch(id){
         var ov=Math.floor(ballCount/6)+'.'+ballCount%6;
         if(confirm('Resume scoring from over '+ov+', score '+inn.total+'/'+inn.wkts+'?')){
           S.innId=inn.id;
-          S.innNum=inn.innings_num;
+          S.innNum=inn.innings_num||st.innNum||1;
           S.balls=st.balls;
           S.total=inn.total; S.wkts=inn.wkts;
           S.exW=st.exW||0; S.exB=st.exB||0; S.exNB=st.exNB||0;
