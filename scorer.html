@@ -161,6 +161,9 @@ var BD={
 // Strike rotates when bat is odd (n=1,3,5) via existing b.bat%2===1 check.
 BD['W0']={bat:0,ex:1,re:1,w:1,b:0,nb:0};
 (function(){for(var i=1;i<=6;i++){BD['W'+i]={bat:i,ex:1,re:i+1,w:1,b:0,nb:0};}})();
+// NB0 = no-ball no bat runs; NB1-NB6 = no-ball + n bat runs (credited to batter).
+BD['NB0']={bat:0,ex:1,re:1,w:0,b:0,nb:1};
+(function(){for(var i=1;i<=6;i++){BD['NB'+i]={bat:i,ex:1,re:i+1,w:0,b:0,nb:1};}})();
 
 // ── State ──
 var S={
@@ -201,6 +204,7 @@ var S={
   wktType:'',
   wktRuns:0,
   widePopup:false,
+  nbPopup:false,
   retiringBatter:'',
   changeBatterSlot:null,
 
@@ -424,7 +428,7 @@ function doResume(){
   S.bs=st.bs||{}; S.bws=st.bws||{};
   S.wktRuns=st.wktRuns||0; S.inn1=st.inn1||null;
   S.retireAt=st.retireAt||calcRetireAt(S.batOrder.length);
-  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.retiringBatter='';
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.nbPopup=false; S.retiringBatter='';
   S.pendingResume=null;
   S.screen='scoring'; r();
 }
@@ -552,7 +556,7 @@ async function startInnings(){
   if(S.batNextIdx<0)S.batNextIdx=batList.length;
 
   S.balls=[]; S.total=0; S.wkts=0; S.exW=0; S.exB=0; S.exNB=0;
-  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.retiringBatter='';
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.nbPopup=false; S.retiringBatter='';
 
   S.bs={}; S.bws={};
   batList.forEach(function(n){S.bs[n]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false};});
@@ -608,6 +612,27 @@ function rScoring(){
   }).join('');
 
   var target=S.inn1?'<div class="starget">Target: '+(S.inn1.total+S.inn1.bonus+1)+'</div>':'';
+
+  var nbModal='';
+  if(S.nbPopup){
+    var nbOpts=[0,1,2,3,4,5,6].map(function(n){
+      var chg=n%2===1;
+      return '<div class="mopt" style="'+(chg?'outline:1px solid rgba(245,166,35,.5)':'')+'" onclick="S.nbPopup=false;ball(\'NB'+n+'\')">'+
+        '<div style="font-size:17px;font-weight:900">'+n+'</div>'+
+        '<div style="font-size:9px;opacity:.6;margin-top:2px">'+(chg?'⇄ swap':'–')+'</div>'+
+      '</div>';
+    }).join('');
+    nbModal='<div class="overlay" onclick="S.nbPopup=false;r()">'+
+      '<div class="mbox" onclick="event.stopPropagation()">'+
+        '<div class="mbox-title">No Ball — batter scored?</div>'+
+        '<div class="lbl" style="text-align:center;margin-bottom:10px">0 = no runs off bat &bull; odd = batter changes ends</div>'+
+        '<div class="mgrid" style="grid-template-columns:repeat(4,1fr)">'+nbOpts+'</div>'+
+        '<div class="mbtns" style="margin-top:4px">'+
+          '<button class="mbtn mbtn-no" onclick="S.nbPopup=false;r()">Cancel</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
 
   var wideModal='';
   if(S.widePopup){
@@ -685,7 +710,7 @@ function rScoring(){
       '<button class="bb bb-bye" onclick="ball(\'B\')">B</button>'+
       '<button class="bb bb-bye" onclick="ball(\'2B\')">2B</button>'+
       '<button class="bb bb-bye" onclick="ball(\'4B\')">4B</button>'+
-      '<button class="bb bb-nb"  onclick="ball(\'N\')">NB</button>'+
+      '<button class="bb bb-nb"  onclick="S.nbPopup=true;r()">NB</button>'+
       '<div></div>'+
       '<button class="bb bb-wkt" onclick="S.showWkt=true;S.wktType=\'\';S.wktRuns=0;r()">WICKET ‼</button>'+
       '<button class="bb bb-undo" onclick="undoBall()">↩ UNDO</button>'+
@@ -747,7 +772,7 @@ function rScoring(){
       '<button class="btn btn-dim" style="flex:1;font-size:13px;color:#ffaaaa" onclick="abandonMatch()">✕ Abandon</button>'+
     '</div>'+
   '</div>'+
-  wideModal+wktModal);
+  nbModal+wideModal+wktModal);
 }
 
 function ball(type){
@@ -865,7 +890,7 @@ function confirmRetire(){
 
 function undoBall(){
   if(!S.balls.length)return;
-  S.retirePending=false;S.endOverPending=false;S.retiringBatter='';
+  S.retirePending=false;S.endOverPending=false;S.widePopup=false;S.nbPopup=false;S.retiringBatter='';
   var b=S.balls.pop();
   applyBall(b,-1);
   // applyBall handles odd-run strike rotation; for even-run wickets we need to undo the unconditional wicket swap
@@ -1096,6 +1121,8 @@ function ballChipLabel(b){
   if(b.isWkt)return '⊗';
   var wm=/^W(\d+)$/.exec(b.type);
   if(wm){return parseInt(wm[1])===0?'W':'W'+wm[1];}
+  var nm=/^NB(\d+)$/.exec(b.type);
+  if(nm){return parseInt(nm[1])===0?'NB':'NB'+nm[1];}
   var m={'W':'W','1W':'1W','2W':'2W','4W':'4W','B':'B','2B':'2B','4B':'4B','N':'NB','.':'•'};
   return m[b.type]!==undefined?m[b.type]:b.type;
 }
@@ -1104,7 +1131,7 @@ function ballChipColor(b){
   if(b.type==='4'||b.type==='6')return '#1a5e36';
   if(b.type==='W'||b.type==='1W'||b.type==='2W'||b.type==='4W'||/^W\d+$/.test(b.type))return '#e67e22';
   if(b.type==='B'||b.type==='2B'||b.type==='4B')return '#7f8c8d';
-  if(b.type==='N')return '#8e44ad';
+  if(b.type==='N'||/^NB\d+$/.test(b.type))return '#8e44ad';
   if(b.type==='.')return '#555';
   return '#2471a3';
 }
@@ -1115,7 +1142,7 @@ function rEditOvers(){
   var pickerHtml='';
   if(S.editBallIdx!==null){
     var eb=S.balls[S.editBallIdx];
-    var types=['.','1','2','3','4','6','W0','W1','W2','W3','W4','W5','W6','B','2B','4B','N'];
+    var types=['.','1','2','3','4','6','W0','W1','W2','W3','W4','W5','W6','NB0','NB1','NB2','NB3','NB4','B','2B','4B'];
     pickerHtml='<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-end" onclick="S.editBallIdx=null;r()">'+
       '<div style="background:#1a1a1a;width:100%;padding:16px;border-radius:16px 16px 0 0" onclick="event.stopPropagation()">'+
         '<div style="font-size:13px;font-weight:700;opacity:.6;margin-bottom:12px">Change ball '+(S.editBallIdx+1)+
@@ -1217,7 +1244,7 @@ function startInn2(){
   var tmp=S.batTeam;S.batTeam=S.bowlTeam;S.bowlTeam=tmp;
   // Reset innings state
   S.balls=[];S.total=0;S.wkts=0;S.exW=0;S.exB=0;S.exNB=0;
-  S.retirePending=false;S.endOverPending=false;S.showWkt=false;S.widePopup=false;S.retiringBatter='';
+  S.retirePending=false;S.endOverPending=false;S.showWkt=false;S.widePopup=false;S.nbPopup=false;S.retiringBatter='';
   S.innId=null;
   var prevSz=S.sz;
   // Carry inn1 orders across (swapped): inn1 bowlers bat in inn2, inn1 batters bowl in inn2
