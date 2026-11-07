@@ -214,6 +214,7 @@ function r(){
   var scr=S.screen;
   if(scr==='pin')      rPin();
   else if(scr==='matches')  rMatches();
+  else if(scr==='resume')   rResume();
   else if(scr==='setup')    rSetup();
   else if(scr==='scoring')  rScoring();
   else if(scr==='endover')  rEndOver();
@@ -365,23 +366,8 @@ async function pickMatch(id){
       if(st&&st.balls&&st.balls.length>0){
         var ballCount=st.balls.length;
         var ov=Math.floor(ballCount/6)+'.'+ballCount%6;
-        if(confirm('Resume scoring from over '+ov+', score '+inn.total+'/'+inn.wkts+'?')){
-          S.innId=inn.id;
-          S.innNum=inn.innings_num||st.innNum||1;
-          S.balls=st.balls;
-          S.total=inn.total; S.wkts=inn.wkts;
-          S.exW=st.exW||0; S.exB=st.exB||0; S.exNB=st.exNB||0;
-          S.batOn=st.batOn; S.batOff=st.batOff;
-          S.bowler=st.bowler; S.prevBowler=st.prevBowler||'';
-          S.batNextIdx=st.batNextIdx||0;
-          S.batOrder=st.batOrder||[]; S.bowlOrder=st.bowlOrder||[];
-          S.batTeam=st.batTeam||''; S.bowlTeam=st.bowlTeam||'';
-          S.bs=st.bs||{}; S.bws=st.bws||{};
-          S.wktRuns=st.wktRuns||0; S.inn1=st.inn1||null;
-          S.retireAt=st.retireAt||calcRetireAt(S.batOrder.length);
-          S.retirePending=false; S.endOverPending=false; S.showWkt=false;
-          S.screen='scoring'; r(); return;
-        }
+        S.pendingResume={inn:inn,st:st,ov:ov};
+        S.screen='resume'; r(); return;
       }
     }
   }
@@ -389,6 +375,54 @@ async function pickMatch(id){
   S.innNum=1;
   S.screen='setup';
   r();
+}
+
+// ─────────────────────────────────────────────
+// RESUME PROMPT
+// ─────────────────────────────────────────────
+function rResume(){
+  var pr=S.pendingResume; if(!pr)return;
+  var inn=pr.inn; var ov=pr.ov;
+  set('<div class="hdr">'+
+    '<span class="hdr-back" onclick="S.screen=\'matches\';r()">←</span>'+
+    '<div class="hdr-title">Resume Match?</div>'+
+    '<a class="hdr-hub" href="index.html">⌂ Hub</a>'+
+  '</div>'+
+  '<div class="scr" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px 20px">'+
+    '<div style="text-align:center">'+
+      '<div style="font-size:14px;opacity:.6;margin-bottom:6px">In Progress</div>'+
+      '<div style="font-size:48px;font-weight:900;line-height:1">'+inn.total+'/'+inn.wkts+'</div>'+
+      '<div style="font-size:16px;opacity:.7;margin-top:4px">Over '+ov+' &bull; '+inn.bat+'</div>'+
+    '</div>'+
+    '<button class="btn btn-gold" style="width:100%;max-width:320px;font-size:16px;padding:16px" onclick="doResume()">▶ Resume from over '+ov+'</button>'+
+    '<button class="btn btn-dim" style="width:100%;max-width:320px;font-size:14px" onclick="doStartFresh()">✕ Discard & Start Fresh</button>'+
+  '</div>');
+}
+function doResume(){
+  var pr=S.pendingResume; if(!pr)return;
+  var inn=pr.inn; var st=pr.st;
+  S.innId=inn.id;
+  S.innNum=inn.innings_num||st.innNum||1;
+  S.balls=st.balls;
+  S.total=inn.total; S.wkts=inn.wkts;
+  S.exW=st.exW||0; S.exB=st.exB||0; S.exNB=st.exNB||0;
+  S.batOn=st.batOn; S.batOff=st.batOff;
+  S.bowler=st.bowler; S.prevBowler=st.prevBowler||'';
+  S.batNextIdx=st.batNextIdx||0;
+  S.batOrder=st.batOrder||[]; S.bowlOrder=st.bowlOrder||[];
+  S.batTeam=st.batTeam||''; S.bowlTeam=st.bowlTeam||'';
+  S.bs=st.bs||{}; S.bws=st.bws||{};
+  S.wktRuns=st.wktRuns||0; S.inn1=st.inn1||null;
+  S.retireAt=st.retireAt||calcRetireAt(S.batOrder.length);
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false;
+  S.pendingResume=null;
+  S.screen='scoring'; r();
+}
+function doStartFresh(){
+  S.pendingResume=null;
+  S.sz={step:0,batFirstIdx:-1,batTxt:'',bowlTxt:''};
+  S.innNum=1;
+  S.screen='setup'; r();
 }
 
 // ─────────────────────────────────────────────

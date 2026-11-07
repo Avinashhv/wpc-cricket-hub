@@ -480,7 +480,7 @@ function extStr(e){
 
 function hList(){
   // Sort: live first, then upcoming by round, then completed by round
-  var statusOrd={live:0,upcoming:1,completed:2};
+  var statusOrd={live:0,upcoming:1,completed:2,abandoned:3};
   var sorted=M.slice().sort(function(a,b){
     var pa=statusOrd[a.status]!==undefined?statusOrd[a.status]:1;
     var pb=statusOrd[b.status]!==undefined?statusOrd[b.status]:1;
@@ -630,6 +630,19 @@ function hList(){
           '<a href="scorer.html" style="display:inline-block;background:#e53935;color:#fff;font-size:12px;font-weight:800;padding:6px 16px;border-radius:6px;text-decoration:none;letter-spacing:.3px" onclick="event.stopPropagation()">● LIVE SCORE</a>'+
           '<button onclick="openEditResult('+m.id+',event)" style="background:none;border:1px solid #bbb;color:#555;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;cursor:pointer">✎ Enter Batting</button>'+
         '</div>';
+    } else if(m.status==='abandoned'){
+      teamsHtml=
+        '<div class="card-teams">'+
+        '<div class="team-row">'+
+          '<div class="team-logo '+m.t1.cls+'">'+m.t1.logo+'</div>'+
+          '<div class="team-name">'+m.t1.name+'</div>'+
+        '</div>'+
+        '<div class="team-row">'+
+          '<div class="team-logo '+m.t2.cls+'">'+m.t2.logo+'</div>'+
+          '<div class="team-name">'+m.t2.name+'</div>'+
+        '</div>'+
+        '</div>'+
+        '<div style="padding:6px 14px 10px;font-size:12px;opacity:.5">No result — match abandoned</div>';
     } else {
       teamsHtml=
         '<div class="card-teams">'+
