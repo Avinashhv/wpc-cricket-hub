@@ -917,8 +917,8 @@ function checkAfterBall(){
   var lastBatter=S.balls.length?S.balls[S.balls.length-1].batter:S.batOn;
   var bs=S.bs[lastBatter];
   var lastPair=S.batNextIdx>=S.batOrder.length; // no more batters to bring in
-  if(bs&&bs.b>=retireAt&&!bs.retired&&!bs.recalled&&!bs.quotaNotified&&!lastPair){
-    bs.quotaNotified=true; // prevent re-triggering if scorer chooses Continue
+  if(bs&&bs.b>=retireAt&&!bs.retired&&!bs.recalled&&!lastPair){
+    // Fires on every ball over quota until scorer retires; Continue just delays one ball
     S.retirePending=true;
     S.retiringBatter=lastBatter;
   }
@@ -1007,7 +1007,6 @@ function undoBall(){
   if(bs&&bs.b<(S.retireAt||RETIRE_AT)){
     bs.retired=false;
     if(bs.maxed){bs.maxed=false;S.lastPairMaxMsg='';}
-    bs.quotaNotified=false;
   }
   if(bs&&bs.wkts<1&&bs.d&&bs.d!=='retired')bs.d='';
   // Restore bowler from ball history
