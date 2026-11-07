@@ -198,6 +198,7 @@ var S={
   wktType:'',
   wktRuns:0,
   widePopup:false,
+  retiringBatter:'',
 
   // Supabase
   innId:null,
@@ -418,7 +419,7 @@ function doResume(){
   S.bs=st.bs||{}; S.bws=st.bws||{};
   S.wktRuns=st.wktRuns||0; S.inn1=st.inn1||null;
   S.retireAt=st.retireAt||calcRetireAt(S.batOrder.length);
-  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false;
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.retiringBatter='';
   S.pendingResume=null;
   S.screen='scoring'; r();
 }
@@ -546,7 +547,7 @@ async function startInnings(){
   if(S.batNextIdx<0)S.batNextIdx=batList.length;
 
   S.balls=[]; S.total=0; S.wkts=0; S.exW=0; S.exB=0; S.exNB=0;
-  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false;
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.retiringBatter='';
 
   S.bs={}; S.bws={};
   batList.forEach(function(n){S.bs[n]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false};});
@@ -656,7 +657,13 @@ function rScoring(){
     '<button class="btn btn-gold" onclick="endInnings()">End Innings '+S.innNum+'</button>'
     :
     (S.retirePending?
-      '<div class="retire-bar" onclick="doRetire()">'+S.batOn+' retired ('+(S.retireAt||RETIRE_AT)+' balls) — tap to bring next batter in</div>'
+      '<div>'+
+        '<div class="retire-bar">'+(S.retiringBatter||S.batOn)+' has reached their quota ('+(S.retireAt||RETIRE_AT)+' balls)</div>'+
+        '<div style="display:flex;gap:8px;margin-top:8px">'+
+          '<button class="btn btn-gold" style="flex:2" onclick="doRetire()">▶ Bring next batter in</button>'+
+          '<button class="btn btn-dim" style="flex:1;font-size:12px" onclick="swapRetiree()">⇄ '+(S.retiringBatter===S.batOn?S.batOff:S.batOn)+'</button>'+
+        '</div>'+
+      '</div>'
     :
     '<div class="bgrid">'+
       '<button class="bb bb-dot" onclick="ball(\'.\')">·</button>'+
@@ -775,13 +782,15 @@ function applyBall(b,sign){
 
 function checkAfterBall(){
   var totalBalls=S.balls.length;
-  // Check retire
-  var bs=S.bs[S.batOn];
+  // Check retire — use the batter who just faced the ball (may differ from S.batOn after a rotation)
   var retireAt=S.retireAt||RETIRE_AT;
+  var lastBatter=S.balls.length?S.balls[S.balls.length-1].batter:S.batOn;
+  var bs=S.bs[lastBatter];
   if(bs&&bs.b>=retireAt&&!bs.retired&&!bs.recalled){
     bs.retired=true;
     if(!bs.d)bs.d='retired';
     S.retirePending=true;
+    S.retiringBatter=lastBatter;
   }
   // Check end of over
   if(totalBalls%OVER_SIZE===0){
@@ -841,7 +850,7 @@ function confirmRetire(){
 
 function undoBall(){
   if(!S.balls.length)return;
-  S.retirePending=false;S.endOverPending=false;
+  S.retirePending=false;S.endOverPending=false;S.retiringBatter='';
   var b=S.balls.pop();
   applyBall(b,-1);
   // applyBall handles odd-run strike rotation; for even-run wickets we need to undo the unconditional wicket swap
@@ -870,6 +879,9 @@ function recallBatter(){
 
 function doRetire(){
   S.retirePending=false;
+  var retiree=S.retiringBatter||S.batOn;
+  var retireOn=(retiree===S.batOn); // true = retiring striker, false = retiring non-striker
+  S.retiringBatter='';
   var idx=S.batNextIdx;
   while(idx<S.batOrder.length){
     var n=S.batOrder[idx];
@@ -877,13 +889,22 @@ function doRetire(){
     idx++;
   }
   if(idx<S.batOrder.length){
-    S.batOn=S.batOrder[idx];
-    S.batNextIdx=idx+1;
+    var nb=S.batOrder[idx]; S.batNextIdx=idx+1;
+    if(retireOn){S.batOn=nb;} else {S.batOff=nb;}
   } else {
     var recalled=recallBatter();
-    if(recalled){S.batOn=recalled;}
+    if(recalled){if(retireOn){S.batOn=recalled;}else{S.batOff=recalled;}}
     else{endInnings();return;}
   }
+  r();
+}
+function swapRetiree(){
+  var current=S.retiringBatter||S.batOn;
+  var other=current===S.batOn?S.batOff:S.batOn;
+  if(S.bs[current]){S.bs[current].retired=false;S.bs[current].d='';}
+  var bsOther=S.bs[other];
+  if(bsOther){bsOther.retired=true;if(!bsOther.d)bsOther.d='retired';}
+  S.retiringBatter=other;
   r();
 }
 
@@ -1139,7 +1160,7 @@ function startInn2(){
   var tmp=S.batTeam;S.batTeam=S.bowlTeam;S.bowlTeam=tmp;
   // Reset innings state
   S.balls=[];S.total=0;S.wkts=0;S.exW=0;S.exB=0;S.exNB=0;
-  S.retirePending=false;S.endOverPending=false;S.showWkt=false;S.widePopup=false;
+  S.retirePending=false;S.endOverPending=false;S.showWkt=false;S.widePopup=false;S.retiringBatter='';
   S.innId=null;
   var prevSz=S.sz;
   // Carry inn1 orders across (swapped): inn1 bowlers bat in inn2, inn1 batters bowl in inn2
