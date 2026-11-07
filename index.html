@@ -156,6 +156,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .modal-btn{flex:1;padding:13px;border-radius:10px;font-size:15px;font-weight:700;border:none;cursor:pointer}
 .modal-btn-cancel{background:#f0f0f0;color:#333}
 .modal-btn-add{background:#1a5e36;color:#fff}
+.doc-dropzone{border:2px dashed #ccc;border-radius:10px;padding:18px 12px;text-align:center;cursor:pointer;color:#666;font-size:14px;transition:border-color .2s,background .2s;user-select:none}
+.doc-dropzone:hover,.doc-dropzone.drag-over{border-color:#1a5e36;background:#f0f8f4}
+.doc-dropzone.uploaded{border-color:#1a5e36;background:#f0f8f4;color:#1a5e36}
+.doc-dropzone.error{border-color:#c0392b;background:#fdf0ee;color:#c0392b}
 
 /* ── Team status tab ── */
 .status-block{padding:0 0 8px}
@@ -992,7 +996,14 @@ function hDocs(m){
           '<div class="modal-title">Add Document</div>'+
           '<div class="modal-field"><label>Name</label><input id="adn" placeholder="e.g. Team Photo"></div>'+
           '<div class="modal-field"><label>Description</label><input id="add" placeholder="Short description"></div>'+
-          '<div class="modal-field"><label>URL or filename</label><input id="adf" placeholder="e.g. http://… or photo.jpg"></div>'+
+          '<div class="modal-field">'+
+            '<label>Upload file</label>'+
+            '<div id="adz" class="doc-dropzone" onclick="document.getElementById(\'adfi\').click()" ondragover="event.preventDefault();this.classList.add(\'drag-over\')" ondragleave="this.classList.remove(\'drag-over\')" ondrop="handleDocDrop(event,this)">'+
+              '<input type="file" id="adfi" style="display:none" onchange="handleDocFile(this.files[0])">'+
+              '<span id="adz-txt">📎 Tap to browse or drag a file here</span>'+
+            '</div>'+
+          '</div>'+
+          '<div class="modal-field"><label>— or paste a URL —</label><input id="adf" placeholder="e.g. http://…"></div>'+
           '<div class="modal-field"><label>Type</label>'+
             '<select id="adt">'+
               '<option value="PDF">PDF</option>'+
@@ -1051,12 +1062,50 @@ function toggleDoc(file){
 }
 function showAddDoc(){S.showAddDoc=true;render();}
 function closeAddDoc(){S.showAddDoc=false;render();}
+function handleDocDrop(e,zone){
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  var f=e.dataTransfer.files[0];
+  if(f) handleDocFile(f);
+}
+async function handleDocFile(file){
+  if(!file) return;
+  var zone=document.getElementById('adz');
+  var lbl=document.getElementById('adz-txt');
+  if(zone) zone.className='doc-dropzone';
+  if(lbl) lbl.textContent='Uploading '+file.name+'…';
+  // Auto-detect type
+  var t=document.getElementById('adt');
+  if(t){
+    if(file.type==='application/pdf')t.value='PDF';
+    else if(file.type.startsWith('image/'))t.value='IMG';
+    else if(file.type.includes('word')||/\.(docx?|odt)$/i.test(file.name))t.value='DOC';
+    else t.value='OTHER';
+  }
+  // Auto-fill name from filename if empty
+  var n=document.getElementById('adn');
+  if(n&&!n.value) n.value=file.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ');
+  // Upload to Supabase Storage
+  var path='docs/'+Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  var up=await db.storage.from('match-docs').upload(path,file,{upsert:true});
+  if(up.error){
+    if(zone) zone.className='doc-dropzone error';
+    if(lbl) lbl.textContent='Upload failed: '+up.error.message+' — paste a URL instead';
+    return;
+  }
+  var pu=db.storage.from('match-docs').getPublicUrl(path);
+  var url=pu.data.publicUrl;
+  var f2=document.getElementById('adf');
+  if(f2) f2.value=url;
+  if(zone) zone.className='doc-dropzone uploaded';
+  if(lbl) lbl.textContent='✓ '+file.name;
+}
 function saveDoc(mid){
   var n=(document.getElementById('adn')||{}).value||'';
   var d=(document.getElementById('add')||{}).value||'';
   var f=(document.getElementById('adf')||{}).value||'';
   var t=(document.getElementById('adt')||{}).value||'PDF';
-  if(!n||!f){alert('Name and URL/filename are required');return;}
+  if(!n||!f){alert('Name and file/URL are required');return;}
   S.showAddDoc=false;
   render();
   db.from('match_docs').insert({match_id:mid,name:n,description:d,file_url:f,type:t})
