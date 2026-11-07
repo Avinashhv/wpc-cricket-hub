@@ -343,16 +343,28 @@ function teamObj(name){
     {name:name,short:name.substring(0,3).toUpperCase(),logo:name.substring(0,3).toUpperCase(),cls:'logo-def'};
 }
 
+function resolveTeamFromForm(slot){
+  var sel=(document.getElementById('hm-'+slot)||{}).value||'';
+  if(sel==='__new__'){
+    var name=((document.getElementById('hm-'+slot+'-name')||{}).value||'').trim();
+    var logo=((document.getElementById('hm-'+slot+'-logo')||{}).value||'').trim().toUpperCase().substring(0,4);
+    if(!name){return null;}
+    if(!logo)logo=name.substring(0,3).toUpperCase();
+    return {name:name,short:name.substring(0,4).toUpperCase(),logo:logo,cls:'logo-def'};
+  }
+  if(!sel)return null;
+  return teamObj(sel);
+}
 async function saveNewMatchHub(){
   var rnd=parseInt((document.getElementById('hm-rnd')||{}).value||'0');
   var date=(document.getElementById('hm-date')||{}).value||'';
   var time=(document.getElementById('hm-time')||{}).value||'18:00';
   var venue=(document.getElementById('hm-venue')||{}).value||'';
-  var t1name=(document.getElementById('hm-t1')||{}).value||'';
-  var t2name=(document.getElementById('hm-t2')||{}).value||'';
+  var t1=resolveTeamFromForm('t1');
+  var t2=resolveTeamFromForm('t2');
+  var t1name=t1?t1.name:'', t2name=t2?t2.name:'';
   if(!rnd||!date||!t1name||!t2name){alert('Fill in round, date and both teams');return;}
   if(t1name===t2name){alert('Teams must be different');return;}
-  var t1=teamObj(t1name), t2=teamObj(t2name);
   var datetime=''+date+' at '+time+' (local time)';
   var idRes=await db.from('matches').select('id').order('id',{ascending:false}).limit(1);
   var nextId=idRes.data&&idRes.data.length?(idRes.data[0].id+1):100;
@@ -531,16 +543,24 @@ function hList(){
 
   // Add Match modal
   var teamOpts=KNOWN_TEAMS.map(function(t){return '<option value="'+t.name+'">'+t.name+'</option>';}).join('');
+  var newTeamFields=function(slot){
+    return '<div id="hm-'+slot+'-custom" style="display:none;margin-top:6px;display:none">'+
+      '<div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">'+
+        '<div><label style="font-size:11px;opacity:.6">Team name</label><input id="hm-'+slot+'-name" class="modal-inp" placeholder="e.g. Norths Blue"></div>'+
+        '<div><label style="font-size:11px;opacity:.6">Logo (3 chars)</label><input id="hm-'+slot+'-logo" class="modal-inp" placeholder="NRB" maxlength="4"></div>'+
+      '</div>'+
+    '</div>';
+  };
   var addModal=S.showAddMatch?(
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:flex-end" onclick="S.showAddMatch=false;render()">'+
-      '<div class="modal" style="width:100%;border-radius:16px 16px 0 0;padding-bottom:max(20px,env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
+      '<div class="modal" style="width:100%;border-radius:16px 16px 0 0;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto" onclick="event.stopPropagation()">'+
         '<div class="modal-title">Add Match</div>'+
         '<div class="modal-field"><label>Round</label><input id="hm-rnd" type="number" class="modal-inp" placeholder="5"></div>'+
         '<div class="modal-field"><label>Date</label><input id="hm-date" type="text" class="modal-inp" placeholder="Sat 7 Nov 2026"></div>'+
         '<div class="modal-field"><label>Time</label><input id="hm-time" type="text" class="modal-inp" placeholder="7:45 AM"></div>'+
         '<div class="modal-field"><label>Venue</label><input id="hm-venue" type="text" class="modal-inp" placeholder="Yeronga Oval #1"></div>'+
-        '<div class="modal-field"><label>Team 1</label><select id="hm-t1" class="modal-inp"><option value="">Select…</option>'+teamOpts+'</select></div>'+
-        '<div class="modal-field"><label>Team 2</label><select id="hm-t2" class="modal-inp"><option value="">Select…</option>'+teamOpts+'</select></div>'+
+        '<div class="modal-field"><label>Team 1</label><select id="hm-t1" class="modal-inp" onchange="var d=document.getElementById(\'hm-t1-custom\');d.style.display=this.value===\'__new__\'?\'block\':\'none\'"><option value="">Select…</option>'+teamOpts+'<option value="__new__">— Enter new team —</option></select>'+newTeamFields('t1')+'</div>'+
+        '<div class="modal-field"><label>Team 2</label><select id="hm-t2" class="modal-inp" onchange="var d=document.getElementById(\'hm-t2-custom\');d.style.display=this.value===\'__new__\'?\'block\':\'none\'"><option value="">Select…</option>'+teamOpts+'<option value="__new__">— Enter new team —</option></select>'+newTeamFields('t2')+'</div>'+
         '<div class="modal-btns">'+
           '<button class="modal-btn modal-btn-cancel" onclick="S.showAddMatch=false;render()">Cancel</button>'+
           '<button class="modal-btn modal-btn-add" onclick="saveNewMatchHub()">Add Match</button>'+
