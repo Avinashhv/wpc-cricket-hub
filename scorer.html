@@ -156,6 +156,8 @@ var BD={
   '4B':{bat:0,ex:4,re:4,w:0,b:4,nb:0},
   'N': {bat:0,ex:0,re:0,w:0,b:0,nb:1},
 };
+// W1–W10: n = total wide runs. Batter credited (n-1) runs; 1 extra (the wide penalty).
+(function(){for(var i=1;i<=10;i++){BD['W'+i]={bat:i-1,ex:1,re:i,w:1,b:0,nb:0};}})();
 
 // ── State ──
 var S={
@@ -195,6 +197,7 @@ var S={
   showWkt:false,
   wktType:'',
   wktRuns:0,
+  widePopup:false,
 
   // Supabase
   innId:null,
@@ -414,7 +417,7 @@ function doResume(){
   S.bs=st.bs||{}; S.bws=st.bws||{};
   S.wktRuns=st.wktRuns||0; S.inn1=st.inn1||null;
   S.retireAt=st.retireAt||calcRetireAt(S.batOrder.length);
-  S.retirePending=false; S.endOverPending=false; S.showWkt=false;
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false;
   S.pendingResume=null;
   S.screen='scoring'; r();
 }
@@ -542,7 +545,7 @@ async function startInnings(){
   if(S.batNextIdx<0)S.batNextIdx=batList.length;
 
   S.balls=[]; S.total=0; S.wkts=0; S.exW=0; S.exB=0; S.exNB=0;
-  S.retirePending=false; S.endOverPending=false; S.showWkt=false;
+  S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false;
 
   S.bs={}; S.bws={};
   batList.forEach(function(n){S.bs[n]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false};});
@@ -599,6 +602,23 @@ function rScoring(){
 
   var target=S.inn1?'<div class="starget">Target: '+(S.inn1.total+S.inn1.bonus+1)+'</div>':'';
 
+  var wideModal='';
+  if(S.widePopup){
+    var wideOpts=[1,2,3,4,5,6,7,8,9,10].map(function(n){
+      return '<div class="mopt" onclick="S.widePopup=false;ball(\'W'+n+'\')">'+n+'</div>';
+    }).join('');
+    wideModal='<div class="overlay" onclick="S.widePopup=false;r()">'+
+      '<div class="mbox" onclick="event.stopPropagation()">'+
+        '<div class="mbox-title">Wide — total runs?</div>'+
+        '<div class="lbl" style="text-align:center;margin-bottom:8px">1 = standard wide &bull; 2+ = batter ran too</div>'+
+        '<div class="mgrid" style="grid-template-columns:repeat(5,1fr)">'+wideOpts+'</div>'+
+        '<div class="mbtns" style="margin-top:4px">'+
+          '<button class="mbtn mbtn-no" onclick="S.widePopup=false;r()">Cancel</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
+
   var wktModal='';
   if(S.showWkt){
     var isRetire=S.wktType==='Retire';
@@ -644,10 +664,7 @@ function rScoring(){
       '<button class="bb bb-run" onclick="ball(\'3\')">3</button>'+
       '<button class="bb bb-4"  onclick="ball(\'4\')">4</button>'+
       '<button class="bb bb-6"  onclick="ball(\'6\')">6</button>'+
-      '<button class="bb bb-wide" onclick="ball(\'W\')">W</button>'+
-      '<button class="bb bb-wide" onclick="ball(\'1W\')">1W</button>'+
-      '<button class="bb bb-wide" onclick="ball(\'2W\')">2W</button>'+
-      '<button class="bb bb-wide" onclick="ball(\'4W\')">4W</button>'+
+      '<button class="bb bb-wide" onclick="S.widePopup=true;r()">W</button>'+
       '<button class="bb bb-bye" onclick="ball(\'B\')">B</button>'+
       '<button class="bb bb-bye" onclick="ball(\'2B\')">2B</button>'+
       '<button class="bb bb-bye" onclick="ball(\'4B\')">4B</button>'+
@@ -694,8 +711,8 @@ function rScoring(){
     '<div class="bowl-over-strip">'+
       '<span class="bow-strip-name">'+S.bowler+'</span>'+
       '<span class="bow-strip-balls">'+(ovBalls.length?ovBalls.map(function(b){
-        var lbl=b.type==='.'?'·':b.type;
-        if(b.isWkt)lbl+='‼';
+        var lbl=ballChipLabel(b);
+        if(b.isWkt&&lbl!=='⊗')lbl+='‼';
         var cls='od'+(b.isWkt?' od-wkt':(b.type!=='.'&&b.type!=='1'&&b.type!=='2'&&b.type!=='3'&&b.type!=='4'&&b.type!=='6'?' od-extra':''));
         return '<span class="'+cls+'">'+lbl+'</span>';
       }).join(''):'<span style="opacity:.3">– – – – – –</span>')+'</span>'+
@@ -707,7 +724,7 @@ function rScoring(){
       '<button class="btn btn-dim" style="flex:1;font-size:13px;color:#ffaaaa" onclick="abandonMatch()">✕ Abandon</button>'+
     '</div>'+
   '</div>'+
-  wktModal);
+  wideModal+wktModal);
 }
 
 function ball(type){
@@ -998,13 +1015,15 @@ function editBall(idx,newType){
 
 function ballChipLabel(b){
   if(b.isWkt)return '⊗';
+  var wm=/^W(\d+)$/.exec(b.type);
+  if(wm){return parseInt(wm[1])===1?'W':'W'+wm[1];}
   var m={'W':'W','1W':'1W','2W':'2W','4W':'4W','B':'B','2B':'2B','4B':'4B','N':'NB','.':'•'};
   return m[b.type]!==undefined?m[b.type]:b.type;
 }
 function ballChipColor(b){
   if(b.isWkt)return '#c0392b';
   if(b.type==='4'||b.type==='6')return '#1a5e36';
-  if(b.type==='W'||b.type==='1W'||b.type==='2W'||b.type==='4W')return '#e67e22';
+  if(b.type==='W'||b.type==='1W'||b.type==='2W'||b.type==='4W'||/^W\d+$/.test(b.type))return '#e67e22';
   if(b.type==='B'||b.type==='2B'||b.type==='4B')return '#7f8c8d';
   if(b.type==='N')return '#8e44ad';
   if(b.type==='.')return '#555';
@@ -1017,7 +1036,7 @@ function rEditOvers(){
   var pickerHtml='';
   if(S.editBallIdx!==null){
     var eb=S.balls[S.editBallIdx];
-    var types=['.','1','2','3','4','6','W','1W','2W','4W','B','2B','4B','N'];
+    var types=['.','1','2','3','4','6','W1','W2','W3','W4','W5','W6','B','2B','4B','N'];
     pickerHtml='<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-end" onclick="S.editBallIdx=null;r()">'+
       '<div style="background:#1a1a1a;width:100%;padding:16px;border-radius:16px 16px 0 0" onclick="event.stopPropagation()">'+
         '<div style="font-size:13px;font-weight:700;opacity:.6;margin-bottom:12px">Change ball '+(S.editBallIdx+1)+
@@ -1119,7 +1138,7 @@ function startInn2(){
   var tmp=S.batTeam;S.batTeam=S.bowlTeam;S.bowlTeam=tmp;
   // Reset innings state
   S.balls=[];S.total=0;S.wkts=0;S.exW=0;S.exB=0;S.exNB=0;
-  S.retirePending=false;S.endOverPending=false;S.showWkt=false;
+  S.retirePending=false;S.endOverPending=false;S.showWkt=false;S.widePopup=false;
   S.innId=null;
   var prevSz=S.sz;
   // Carry inn1 orders across (swapped): inn1 bowlers bat in inn2, inn1 batters bowl in inn2
