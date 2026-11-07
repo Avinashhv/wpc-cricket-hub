@@ -481,15 +481,31 @@ function rSetup(){
     var inn2=S.innNum===2;
     var roAttr='';
     var roNote=inn2?'<div style="font-size:11px;opacity:.5;margin-bottom:8px">Carried over from Innings 1 — update as needed</div>':'';
+    var batLines=sz.batTxt?sz.batTxt.split('\n').map(function(x){return x.trim();}):[];
+    var bowlLines=sz.bowlTxt?sz.bowlTxt.split('\n').map(function(x){return x.trim();}):[];
+    var rowStyle='display:flex;align-items:center;gap:8px;margin-bottom:7px';
+    var numStyle='color:#f5a623;font-weight:800;font-size:14px;min-width:22px;text-align:right;flex-shrink:0';
+    var inpStyle='flex:1;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:9px 11px;color:#fff;font-size:15px;outline:none;font-family:inherit';
+    function makeRows(prefix,count,vals){
+      var h='';
+      for(var i=0;i<count;i++){
+        var v=vals[i]||'';
+        h+='<div style="'+rowStyle+'">'+
+          '<div style="'+numStyle+'">'+(i+1)+'.</div>'+
+          '<input id="'+prefix+'-p-'+(i+1)+'" style="'+inpStyle+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="'+(i<2?'Required':'Optional')+'">'+
+        '</div>';
+      }
+      return h;
+    }
     set(hdr+'<div class="scr">'+
       roNote+
-      '<div>'+
-        '<div class="lbl">'+bt+' — Batting Order (one name per line)</div>'+
-        '<textarea class="inp" id="bat-txt" rows="8"'+roAttr+' placeholder="Tom\nSerhan\nAksharan\n...">'+sz.batTxt+'</textarea>'+
+      '<div style="margin-bottom:14px">'+
+        '<div class="lbl">'+bt+' — Batting Order</div>'+
+        makeRows('bat',8,batLines)+
       '</div>'+
-      '<div>'+
-        '<div class="lbl">'+blt+' — Bowling Order (one per line)</div>'+
-        '<textarea class="inp" id="bowl-txt" rows="8"'+roAttr+' placeholder="Player1\nPlayer2\n...">'+sz.bowlTxt+'</textarea>'+
+      '<div style="margin-bottom:14px">'+
+        '<div class="lbl">'+blt+' — Bowling Order</div>'+
+        makeRows('bowl',7,bowlLines)+
       '</div>'+
       '<button class="btn btn-gold" onclick="setupSaveOrders()">Next →</button>'+
     '</div>');
@@ -509,8 +525,10 @@ function rSetup(){
   }
 }
 function setupSaveOrders(){
-  var bt=(document.getElementById('bat-txt')||{}).value||'';
-  var bl=(document.getElementById('bowl-txt')||{}).value||'';
+  var batVals=[],bowlVals=[];
+  for(var i=1;i<=8;i++){var el=document.getElementById('bat-p-'+i);if(el&&el.value.trim())batVals.push(el.value.trim());}
+  for(var i=1;i<=7;i++){var el=document.getElementById('bowl-p-'+i);if(el&&el.value.trim())bowlVals.push(el.value.trim());}
+  var bt=batVals.join('\n'), bl=bowlVals.join('\n');
   S.sz.batTxt=bt;S.sz.bowlTxt=bl;
   var batList=bt.split('\n').map(function(x){return x.trim();}).filter(Boolean);
   var bowlList=bl.split('\n').map(function(x){return x.trim();}).filter(Boolean);
