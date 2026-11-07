@@ -1322,14 +1322,17 @@ function editBall(idx,newType){
   if(!BD[newType])return;
   S.balls[idx].type=newType;
   replayInnings();
-  // Refresh inn1 snapshot so the end-innings screen shows correct totals
+  S.editBallIdx=null;
   if(S.innNum===1){
+    // Refresh inn1 snapshot so the end-innings screen shows correct totals
     S.inn1={bat:S.batTeam,bowl:S.bowlTeam,
       total:S.total,wkts:S.wkts,bonus:S.wkts*WKT_BONUS,
       overs:oversStr(S.balls.length)};
+    saveToDB(r);
+  } else {
+    // Inn2: save then re-finalize so match result updates in the hub
+    saveToDB(function(){finalizeMatch();});
   }
-  S.editBallIdx=null;
-  saveToDB(r);
 }
 
 function ballChipLabel(b){
@@ -1402,8 +1405,9 @@ function rEditOvers(){
     '</div>';
   }
 
+  var backScreen=S.innNum===2?'done':'endinnings';
   set('<div class="hdr">'+
-    '<span class="hdr-back" onclick="S.editBallIdx=null;S.screen=\'endinnings\';r()">←</span>'+
+    '<span class="hdr-back" onclick="S.editBallIdx=null;S.screen=\''+backScreen+'\';r()">←</span>'+
     '<div class="hdr-title">Review / Edit Overs</div>'+
   '</div>'+
   '<div class="scr" style="padding-bottom:80px">'+
@@ -1502,6 +1506,7 @@ function rDone(){
         '<div style="opacity:.9">'+S.batTeam+': '+inn2.total+'/'+inn2.wkts+' (+'+inn1.bonus+') = '+inn2.score+'</div>'+
       '</div>'+
       '<div style="text-align:center;padding:20px;opacity:.5;font-size:13px">Full scorecard now live in the hub</div>'+
+      '<button class="btn btn-dim" style="margin-bottom:8px" onclick="S.editBallIdx=null;S.screen=\'editovers\';r()">✎ Review / Edit Overs</button>'+
       '<button class="btn btn-dim" onclick="S.screen=\'matches\';loadMatches()">← Back to Matches</button>'+
     '</div>');
 }
