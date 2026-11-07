@@ -483,6 +483,11 @@ function rSetup(){
     var roNote=inn2?'<div style="font-size:11px;opacity:.5;margin-bottom:8px">Carried over from Innings 1 — update as needed</div>':'';
     var batLines=sz.batTxt?sz.batTxt.split('\n').map(function(x){return x.trim();}):[];
     var bowlLines=sz.bowlTxt?sz.bowlTxt.split('\n').map(function(x){return x.trim();}):[];
+    // Build suggestion list from all known names (bat + bowl from both innings)
+    var knownSet={};
+    var allKnown=[].concat(batLines,bowlLines,S.batOrder||[],S.bowlOrder||[]);
+    allKnown.forEach(function(n){if(n)knownSet[n]=1;});
+    var datalist='<datalist id="player-names">'+Object.keys(knownSet).map(function(n){return '<option value="'+n.replace(/"/g,'&quot;')+'">';}).join('')+'</datalist>';
     var rowStyle='display:flex;align-items:center;gap:8px;margin-bottom:7px';
     var numStyle='color:#f5a623;font-weight:800;font-size:14px;min-width:22px;text-align:right;flex-shrink:0';
     var inpStyle='flex:1;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:9px 11px;color:#fff;font-size:15px;outline:none;font-family:inherit';
@@ -492,12 +497,13 @@ function rSetup(){
         var v=vals[i]||'';
         h+='<div style="'+rowStyle+'">'+
           '<div style="'+numStyle+'">'+(i+1)+'.</div>'+
-          '<input id="'+prefix+'-p-'+(i+1)+'" style="'+inpStyle+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="'+(i<5?'Required':'Optional')+'">'+
+          '<input id="'+prefix+'-p-'+(i+1)+'" list="player-names" style="'+inpStyle+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="'+(i<5?'Required':'Optional')+'">'+
         '</div>';
       }
       return h;
     }
     set(hdr+'<div class="scr">'+
+      datalist+
       roNote+
       '<div style="margin-bottom:14px">'+
         '<div class="lbl">'+bt+' — Batting Order</div>'+
