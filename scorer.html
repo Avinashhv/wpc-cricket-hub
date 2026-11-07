@@ -791,7 +791,7 @@ function rScoring(){
       '<div class="bat bat-strike">'+
         '<div style="display:flex;align-items:center;justify-content:center;gap:5px">'+
           '<div class="bat-name">'+S.batOn+'</div>'+
-          '<button onclick="S.changeBatterSlot=\'batOn\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>'+
+          (ovBalls.length===0?'<button onclick="S.changeBatterSlot=\'batOn\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>':'')+
         '</div>'+
         '<div class="bat-stat"><span class="bat-runs">'+bs.re+'</span><span class="bat-balls">('+bs.b+')</span></div>'+
       '</div>'+
@@ -799,7 +799,7 @@ function rScoring(){
       '<div class="bat">'+
         '<div style="display:flex;align-items:center;justify-content:center;gap:5px">'+
           '<div class="bat-name">'+S.batOff+'</div>'+
-          '<button onclick="S.changeBatterSlot=\'batOff\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>'+
+          (ovBalls.length===0?'<button onclick="S.changeBatterSlot=\'batOff\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>':'')+
         '</div>'+
         '<div class="bat-stat"><span class="bat-runs">'+bsOff.re+'</span><span class="bat-balls">('+bsOff.b+')</span></div>'+
       '</div>'+
@@ -880,7 +880,8 @@ function checkAfterBall(){
   var retireAt=S.retireAt||RETIRE_AT;
   var lastBatter=S.balls.length?S.balls[S.balls.length-1].batter:S.batOn;
   var bs=S.bs[lastBatter];
-  if(bs&&bs.b>=retireAt&&!bs.retired&&!bs.recalled){
+  var lastPair=S.batNextIdx>=S.batOrder.length; // no more batters to bring in
+  if(bs&&bs.b>=retireAt&&!bs.retired&&!bs.recalled&&!lastPair){
     bs.retired=true;
     if(!bs.d)bs.d='retired';
     S.retirePending=true;
