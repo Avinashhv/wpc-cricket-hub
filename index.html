@@ -1116,7 +1116,7 @@ async function handleDocFile(file){
   var zone=document.getElementById('adz');
   var lbl=document.getElementById('adz-txt');
   if(zone) zone.className='doc-dropzone';
-  if(lbl) lbl.textContent='Uploading '+file.name+'…';
+  if(lbl) lbl.textContent='Reading '+file.name+'…';
   // Auto-detect type
   var t=document.getElementById('adt');
   if(t){
@@ -1128,12 +1128,34 @@ async function handleDocFile(file){
   // Auto-fill name from filename if empty
   var n=document.getElementById('adn');
   if(n&&!n.value) n.value=file.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ');
-  // Upload to Supabase Storage
+  // For files ≤ 3MB: convert to base64 data URL and store directly (no storage bucket needed)
+  var MAX_INLINE=3*1024*1024;
+  if(file.size<=MAX_INLINE){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var url=e.target.result;
+      var f2=document.getElementById('adf');
+      if(f2) f2.value=url;
+      if(zone) zone.className='doc-dropzone uploaded';
+      var kb=Math.round(file.size/1024);
+      if(lbl) lbl.textContent='✓ '+file.name+' ('+kb+'KB — stored inline)';
+    };
+    reader.onerror=function(){
+      if(zone) zone.className='doc-dropzone error';
+      if(lbl) lbl.textContent='Could not read file — paste a URL instead';
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+  // For larger files: try Supabase Storage bucket 'match-docs'
+  if(lbl) lbl.textContent='Uploading '+file.name+'…';
+  // Try to auto-create the bucket first (may succeed if policies allow)
+  await db.storage.createBucket('match-docs',{public:true}).catch(function(){});
   var path='docs/'+Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
   var up=await db.storage.from('match-docs').upload(path,file,{upsert:true});
   if(up.error){
     if(zone) zone.className='doc-dropzone error';
-    if(lbl) lbl.textContent='Upload failed: '+up.error.message+' — paste a URL instead';
+    if(lbl) lbl.textContent='File too large to store inline & bucket not set up. Go to Supabase Dashboard → Storage → New bucket → "match-docs" (Public), then retry.';
     return;
   }
   var pu=db.storage.from('match-docs').getPublicUrl(path);
@@ -1148,7 +1170,7 @@ function saveDoc(mid){
   var d=(document.getElementById('add')||{}).value||'';
   var f=(document.getElementById('adf')||{}).value||'';
   var t=(document.getElementById('adt')||{}).value||'PDF';
-  if(!n||!f){alert('Name and file/URL are required');return;}
+  if(!n||!f){var z=document.getElementById('adz-txt');if(z)z.textContent='Please add a name and attach a file or paste a URL.';var dz=document.getElementById('adz');if(dz)dz.className='doc-dropzone error';return;}
   S.showAddDoc=false;
   render();
   db.from('match_docs').insert({match_id:mid,name:n,description:d,file_url:f,type:t})
