@@ -1488,12 +1488,19 @@ function loadData(){
         venue:r.venue, grade:r.grade, status:r.status,
         t1:r.t1, t2:r.t2, result:r.result,
         teamStatus:r.team_status,
-        innings:(inns||[]).filter(function(i){return i.match_id===r.id;}).map(function(i){
-          return {bat:i.bat,bowl:i.bowl,total:i.total,wkts:i.wkts,overs:i.overs,
-                  extras:i.extras,bonus:i.bonus,
-                  batters:i.batters||[],bowlers:i.bowlers||[],
-                  scorerState:i.scorer_state};
-        }),
+        innings:(function(){
+          var byNum={};
+          (inns||[]).filter(function(i){return i.match_id===r.id;}).forEach(function(i){
+            if(!byNum[i.innings_num]||i.id>byNum[i.innings_num].id) byNum[i.innings_num]=i;
+          });
+          return Object.keys(byNum).sort(function(a,b){return a-b;}).map(function(k){
+            var i=byNum[k];
+            return {id:i.id,innings_num:i.innings_num,bat:i.bat,bowl:i.bowl,total:i.total,wkts:i.wkts,overs:i.overs,
+                    extras:i.extras,bonus:i.bonus,
+                    batters:i.batters||[],bowlers:i.bowlers||[],
+                    scorerState:i.scorer_state};
+          });
+        })(),
         docs:(docs||[]).filter(function(d){return d.match_id===r.id;}).map(function(d){
           return {id:d.id,name:d.name,desc:d.description,file:d.file_url,type:d.type};
         })
