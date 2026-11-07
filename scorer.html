@@ -596,7 +596,7 @@ async function startInnings(){
   S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.nbPopup=false; S.byePopup=false; S.retiringBatter='';
 
   S.bs={}; S.bws={};
-  batList.forEach(function(n){S.bs[n]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false};});
+  batList.forEach(function(n){S.bs[n]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false,quotaNotified:false};});
   bowlList.forEach(function(n){S.bws[n]={balls:0,r:0,w:0};});
 
   // Update match to live
@@ -748,10 +748,13 @@ function rScoring(){
     :
     (S.retirePending?
       '<div>'+
-        '<div class="retire-bar">'+(S.retiringBatter||S.batOn)+' has reached their quota ('+(S.retireAt||RETIRE_AT)+' balls)</div>'+
+        '<div class="retire-bar">'+(S.retiringBatter||S.batOn)+' has reached quota ('+(S.retireAt||RETIRE_AT)+' balls) — retire?</div>'+
         '<div style="display:flex;gap:8px;margin-top:8px">'+
-          '<button class="btn btn-gold" style="flex:2" onclick="doRetire()">▶ Bring next batter in</button>'+
+          '<button class="btn btn-gold" style="flex:2" onclick="doRetire()">▶ Retire &amp; bring next in</button>'+
           '<button class="btn btn-dim" style="flex:1;font-size:12px" onclick="swapRetiree()">⇄ '+(S.retiringBatter===S.batOn?S.batOff:S.batOn)+'</button>'+
+        '</div>'+
+        '<div style="margin-top:6px">'+
+          '<button class="btn" style="width:100%;background:rgba(255,255,255,.1);font-size:13px" onclick="continueAfterQuota()">▷ Continue batting</button>'+
         '</div>'+
       '</div>'
     :
@@ -791,7 +794,7 @@ function rScoring(){
       '<div class="bat bat-strike">'+
         '<div style="display:flex;align-items:center;justify-content:center;gap:5px">'+
           '<div class="bat-name">'+S.batOn+'</div>'+
-          (ovBalls.length===0?'<button onclick="S.changeBatterSlot=\'batOn\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>':'')+
+          (bs.b===0?'<button onclick="S.changeBatterSlot=\'batOn\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>':'')+
         '</div>'+
         '<div class="bat-stat"><span class="bat-runs">'+bs.re+'</span><span class="bat-balls">('+bs.b+')</span></div>'+
       '</div>'+
@@ -799,7 +802,7 @@ function rScoring(){
       '<div class="bat">'+
         '<div style="display:flex;align-items:center;justify-content:center;gap:5px">'+
           '<div class="bat-name">'+S.batOff+'</div>'+
-          (ovBalls.length===0?'<button onclick="S.changeBatterSlot=\'batOff\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>':'')+
+          (bsOff.b===0?'<button onclick="S.changeBatterSlot=\'batOff\';S.screen=\'changebatter\';r()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer">Chg</button>':'')+
         '</div>'+
         '<div class="bat-stat"><span class="bat-runs">'+bsOff.re+'</span><span class="bat-balls">('+bsOff.b+')</span></div>'+
       '</div>'+
@@ -881,9 +884,8 @@ function checkAfterBall(){
   var lastBatter=S.balls.length?S.balls[S.balls.length-1].batter:S.batOn;
   var bs=S.bs[lastBatter];
   var lastPair=S.batNextIdx>=S.batOrder.length; // no more batters to bring in
-  if(bs&&bs.b>=retireAt&&!bs.retired&&!bs.recalled&&!lastPair){
-    bs.retired=true;
-    if(!bs.d)bs.d='retired';
+  if(bs&&bs.b>=retireAt&&!bs.retired&&!bs.recalled&&!bs.quotaNotified&&!lastPair){
+    bs.quotaNotified=true; // prevent re-triggering if scorer chooses Continue
     S.retirePending=true;
     S.retiringBatter=lastBatter;
   }
@@ -972,10 +974,18 @@ function recallBatter(){
   return null;
 }
 
+function continueAfterQuota(){
+  S.retirePending=false;
+  S.retiringBatter='';
+  r();
+}
 function doRetire(){
   S.retirePending=false;
   var retiree=S.retiringBatter||S.batOn;
   var retireOn=(retiree===S.batOn); // true = retiring striker, false = retiring non-striker
+  // Mark retired now that scorer has confirmed
+  var retireeStats=S.bs[retiree];
+  if(retireeStats){retireeStats.retired=true;if(!retireeStats.d)retireeStats.d='retired';}
   S.retiringBatter='';
   var idx=S.batNextIdx;
   while(idx<S.batOrder.length){
@@ -996,9 +1006,9 @@ function doRetire(){
 function swapRetiree(){
   var current=S.retiringBatter||S.batOn;
   var other=current===S.batOn?S.batOff:S.batOn;
-  if(S.bs[current]){S.bs[current].retired=false;S.bs[current].d='';}
+  if(S.bs[current]){S.bs[current].quotaNotified=false;}
   var bsOther=S.bs[other];
-  if(bsOther){bsOther.retired=true;if(!bsOther.d)bsOther.d='retired';}
+  if(bsOther){bsOther.quotaNotified=true;}
   S.retiringBatter=other;
   r();
 }
