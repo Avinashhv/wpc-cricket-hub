@@ -990,6 +990,15 @@ function undoBall(){
   if(!S.balls.length)return;
   S.retirePending=false;S.endOverPending=false;S.widePopup=false;S.nbPopup=false;S.byePopup=false;S.retiringBatter='';
   var b=S.balls.pop();
+  // Reverse retirement stamped on this ball BEFORE applyBall so batters are correct
+  if(b.retirement){
+    var ret=b.retirement;
+    var retStats=S.bs[ret.retiree];
+    if(retStats){retStats.retired=false;if(retStats.d==='retired')retStats.d='';retStats.quotaNotified=false;}
+    if(ret.retireOn){S.batOn=ret.retiree;}else{S.batOff=ret.retiree;}
+    S.batNextIdx=ret.prevBatNextIdx;
+    b.retirement=null;
+  }
   applyBall(b,-1);
   // applyBall handles odd-run strike rotation; for even-run wickets we need to undo the unconditional wicket swap
   if(b.isWkt&&b.bat%2===0){var tw=S.batOn;S.batOn=S.batOff;S.batOff=tw;}
@@ -1032,6 +1041,7 @@ function doRetire(){
   var retireeStats=S.bs[retiree];
   if(retireeStats){retireeStats.retired=true;if(!retireeStats.d)retireeStats.d='retired';}
   S.retiringBatter='';
+  var prevBatNextIdx=S.batNextIdx;
   var idx=S.batNextIdx;
   while(idx<S.batOrder.length){
     var n=S.batOrder[idx];
@@ -1045,6 +1055,11 @@ function doRetire(){
     var recalled=recallBatter();
     if(recalled){if(retireOn){S.batOn=recalled;}else{S.batOff=recalled;}}
     else{endInnings();return;}
+  }
+  // Stamp retirement on the last ball so UNDO can reverse it
+  if(S.balls.length){
+    var lb=S.balls[S.balls.length-1];
+    lb.retirement={retiree:retiree,retireOn:retireOn,prevBatNextIdx:prevBatNextIdx};
   }
   r();
 }
