@@ -1010,6 +1010,17 @@ function undoBall(){
     bs.quotaNotified=false;
   }
   if(bs&&bs.wkts<1&&bs.d&&bs.d!=='retired')bs.d='';
+  // Restore bowler from ball history
+  if(S.balls.length>0){
+    S.bowler=S.balls[S.balls.length-1].bowler;
+    var curOvNow=Math.floor(S.balls.length/OVER_SIZE);
+    var prevOvBalls=S.balls.filter(function(x){return x.ov===curOvNow-1;});
+    S.prevBowler=prevOvBalls.length?prevOvBalls[prevOvBalls.length-1].bowler:'';
+    // If we landed exactly on an over boundary, trigger bowler-pick screen
+    if(S.balls.length%OVER_SIZE===0){S.endOverPending=true;}
+  } else {
+    S.prevBowler='';
+  }
   saveToDB(r);
 }
 
