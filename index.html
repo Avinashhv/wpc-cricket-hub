@@ -331,7 +331,7 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null};
 var PLAYHQ_DEFAULT_URL='https://www.playhq.com/cricket-australia/org/wpc-cricket-club/7b159ec9/msw-pre-christmas-junior-competition-summer-202627/teams/wpc-teal/6bed293c';
 
 var KNOWN_TEAMS=[
@@ -467,8 +467,13 @@ async function abandonMatchFromHub(id,e){
   loadData();
 }
 
-async function deleteMatch(id){
-  if(!confirm('Delete this match and all its data? This cannot be undone.'))return;
+function deleteMatch(id){
+  S.showDeleteConfirm=true;S.deleteMid=id;S.deletePin='';S.deletePinError='';render();
+}
+async function confirmDeleteMatch(){
+  if(S.deletePin!=='4321'){S.deletePinError='Wrong password. Try again.';render();return;}
+  var id=S.deleteMid;
+  S.showDeleteConfirm=false;S.deleteMid=null;S.deletePin='';S.deletePinError='';
   await db.from('match_docs').delete().eq('match_id',id);
   await db.from('innings').delete().eq('match_id',id);
   await db.from('matches').delete().eq('id',id);
@@ -1419,7 +1424,27 @@ function saveNav(){
 function render(){
   saveNav();
   var app=document.getElementById('app');
-  app.innerHTML=S.view==='list'?hList():hDetail(S.mid);
+  var deleteModal='';
+  if(S.showDeleteConfirm){
+    deleteModal=(
+      '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px" onclick="S.showDeleteConfirm=false;render()">'+
+        '<div style="background:#fff;border-radius:16px;padding:24px 20px;width:100%;max-width:360px" onclick="event.stopPropagation()">'+
+          '<div style="font-size:17px;font-weight:800;margin-bottom:6px;color:#c0392b">Delete Match</div>'+
+          '<div style="font-size:14px;color:#555;margin-bottom:16px">This will permanently delete the match and all its data. Enter the admin password to confirm.</div>'+
+          '<div style="margin-bottom:12px">'+
+            '<label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">Password</label>'+
+            '<input id="del-pin" type="password" style="width:100%;border:1.5px solid '+(S.deletePinError?'#c0392b':'#ddd')+';border-radius:8px;padding:10px 12px;font-size:18px;letter-spacing:4px;box-sizing:border-box" placeholder="••••" maxlength="10" oninput="S.deletePin=this.value;S.deletePinError=\'\'">'+
+            (S.deletePinError?'<div style="color:#c0392b;font-size:12px;margin-top:4px;font-weight:600">'+S.deletePinError+'</div>':'')+
+          '</div>'+
+          '<div style="display:flex;gap:10px;margin-top:4px">'+
+            '<button onclick="S.showDeleteConfirm=false;render()" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;font-size:15px;font-weight:700;cursor:pointer">Cancel</button>'+
+            '<button onclick="confirmDeleteMatch()" style="flex:1;padding:12px;border-radius:10px;border:none;background:#c0392b;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Delete</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    );
+  }
+  app.innerHTML=(S.view==='list'?hList():hDetail(S.mid))+deleteModal;
 }
 // ── loadData: fetch from Supabase, assemble M, then render ──
 function loadData(){
