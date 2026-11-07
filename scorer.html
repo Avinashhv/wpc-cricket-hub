@@ -129,6 +129,32 @@ var db=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 // ── Constants ──
 var PIN_CODE='1234';
+
+// ── Custom suggestion dropdown (replaces datalist for mobile) ──
+var _suggNames=[];
+function showInpSugg(inp){
+  var old=document.getElementById('wpc-sugg');if(old)old.remove();
+  var val=inp.value.trim().toLowerCase();
+  var filtered=val?_suggNames.filter(function(n){return n.toLowerCase().indexOf(val)!==-1;}):_suggNames;
+  if(!filtered.length)return;
+  var d=document.createElement('div');
+  d.id='wpc-sugg';
+  d.style.cssText='position:fixed;z-index:9999;background:#0d2b1a;border:1.5px solid rgba(255,255,255,.3);border-radius:10px;overflow:hidden;max-height:220px;overflow-y:auto;min-width:180px;box-shadow:0 6px 24px rgba(0,0,0,.8);';
+  var rect=inp.getBoundingClientRect();
+  var left=rect.left; if(left+180>window.innerWidth)left=window.innerWidth-184;
+  d.style.left=left+'px'; d.style.top=(rect.bottom+4)+'px';
+  filtered.slice(0,10).forEach(function(name){
+    var item=document.createElement('div');
+    item.style.cssText='padding:12px 15px;color:#fff;font-size:15px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08);';
+    item.textContent=name;
+    item.addEventListener('touchstart',function(e){e.preventDefault();inp.value=name;d.remove();});
+    item.addEventListener('mousedown',function(e){e.preventDefault();inp.value=name;d.remove();});
+    d.appendChild(item);
+  });
+  document.body.appendChild(d);
+}
+function hideInpSugg(){setTimeout(function(){var d=document.getElementById('wpc-sugg');if(d)d.remove();},200);}
+
 var RETIRE_AT=17;   // fallback; overridden by calcRetireAt() at innings start
 var OVER_SIZE=6;    // balls per over (all types count)
 var MAX_OVERS=20;
@@ -490,7 +516,7 @@ function rSetup(){
     var allKnown=[].concat(WPC_TEAL,batLines,bowlLines,S.batOrder||[],S.bowlOrder||[]);
     try{var stored=JSON.parse(localStorage.getItem('wpc_known_players')||'[]');allKnown=allKnown.concat(stored);}catch(e){}
     allKnown.forEach(function(n){if(n)knownSet[n]=1;});
-    var datalist='<datalist id="player-names">'+Object.keys(knownSet).map(function(n){return '<option value="'+n.replace(/"/g,'&quot;')+'">';}).join('')+'</datalist>';
+    _suggNames=Object.keys(knownSet); // used by showInpSugg
     var rowStyle='display:flex;align-items:center;gap:8px;margin-bottom:7px';
     var numStyle='color:#f5a623;font-weight:800;font-size:14px;min-width:22px;text-align:right;flex-shrink:0';
     var inpStyle='flex:1;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:9px 11px;color:#fff;font-size:15px;outline:none;font-family:inherit';
@@ -500,13 +526,12 @@ function rSetup(){
         var v=vals[i]||'';
         h+='<div style="'+rowStyle+'">'+
           '<div style="'+numStyle+'">'+(i+1)+'.</div>'+
-          '<input id="'+prefix+'-p-'+(i+1)+'" list="player-names" style="'+inpStyle+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="'+(i<5?'Required':'Optional')+'">'+
+          '<input id="'+prefix+'-p-'+(i+1)+'" onfocus="showInpSugg(this)" oninput="showInpSugg(this)" onblur="hideInpSugg()" style="'+inpStyle+'" value="'+v.replace(/"/g,'&quot;')+'" placeholder="'+(i<5?'Required':'Optional')+'">'+
         '</div>';
       }
       return h;
     }
     set(hdr+'<div class="scr">'+
-      datalist+
       roNote+
       '<div style="margin-bottom:14px">'+
         '<div class="lbl">'+bt+' — Batting Order</div>'+
