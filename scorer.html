@@ -239,6 +239,7 @@ var S={
   changeBatterSlot:null,
   resetPending:false,
   discardPending:false,
+  overHistory:[],
 
   // Supabase
   innId:null,
@@ -254,6 +255,34 @@ var S={
   showAddMatch:false,
 };
 
+function pushOverSnapshot(){
+  if(!S.overHistory)S.overHistory=[];
+  S.overHistory.push({
+    balls:S.balls.map(function(b){return Object.assign({},b);}),
+    batOn:S.batOn,batOff:S.batOff,
+    bowler:S.bowler,prevBowler:S.prevBowler||'',
+    batNextIdx:S.batNextIdx,
+    bs:JSON.parse(JSON.stringify(S.bs)),
+    bws:JSON.parse(JSON.stringify(S.bws)),
+    total:S.total,wkts:S.wkts,
+    exW:S.exW||0,exB:S.exB||0,exNB:S.exNB||0
+  });
+}
+function undoLastOver(){
+  if(!S.overHistory||!S.overHistory.length)return;
+  var snap=S.overHistory.pop();
+  S.balls=snap.balls;
+  S.batOn=snap.batOn;S.batOff=snap.batOff;
+  S.bowler=snap.bowler;S.prevBowler=snap.prevBowler||'';
+  S.batNextIdx=snap.batNextIdx;
+  S.bs=snap.bs;S.bws=snap.bws;
+  S.total=snap.total;S.wkts=snap.wkts;
+  S.exW=snap.exW||0;S.exB=snap.exB||0;S.exNB=snap.exNB||0;
+  S.endOverPending=false;S.retirePending=false;
+  S.showWkt=false;S.widePopup=false;S.nbPopup=false;S.byePopup=false;
+  S.screen=snap.balls.length===0?'scoring':'endover';
+  saveToDB(r);
+}
 function r(){
   var scr=S.screen;
   if(scr==='pin')      rPin();
@@ -668,6 +697,7 @@ async function startInnings(){
 
   S.balls=[]; S.total=0; S.wkts=0; S.exW=0; S.exB=0; S.exNB=0;
   S.retirePending=false; S.endOverPending=false; S.showWkt=false; S.widePopup=false; S.nbPopup=false; S.byePopup=false; S.retiringBatter=''; S.lastPairMaxMsg='';
+  S.overHistory=[];
 
   S.bs={}; S.bws={};
   batList.forEach(function(n){S.bs[n]={r:0,re:0,b:0,fs:0,sx:0,d:'',wkts:0,retired:false,quotaNotified:false,maxed:false};});
@@ -700,6 +730,7 @@ async function startInnings(){
     else S.innId=res.data.id;
   }
 
+  pushOverSnapshot(); // save initial state so over 1 can be undone
   S.screen='scoring';r();
 }
 
@@ -1162,6 +1193,7 @@ async function resetInnings(){
   S.retirePending=false;S.endOverPending=false;S.showWkt=false;
   S.widePopup=false;S.nbPopup=false;S.byePopup=false;
   S.retiringBatter='';S.lastPairMaxMsg='';S.resetPending=false;
+  S.overHistory=[];
   S.bs={};S.bws={};S.batNextIdx=0;
   S.batOn='';S.batOff='';S.bowler='';S.prevBowler='';
   S.innId=keptInnId; // preserved — startInnings will reuse this row
@@ -1195,6 +1227,8 @@ function rEndOver(){
     '</div>';
   }).join('');
 
+  var undoBtn=(S.overHistory&&S.overHistory.length)?
+    '<button class="btn btn-dim" style="margin-top:16px;font-size:13px;color:#ff9999" onclick="undoLastOver()">↩ Undo Over '+ovNum+'</button>':'';
   set('<div class="hdr"><div class="hdr-title">Over '+ovNum+' complete</div><a class="hdr-hub" href="index.html" onclick="return confirm(\'Go to Hub?\')">⌂ Hub</a></div>'+
     '<div class="scr">'+
       '<div class="sbanner">'+
@@ -1203,9 +1237,11 @@ function rEndOver(){
       '</div>'+
       '<div style="font-size:15px;font-weight:800">Select bowler for over '+(ovNum+1)+'</div>'+
       opts+
+      undoBtn+
     '</div>');
 }
 function pickBowler(name){
+  pushOverSnapshot();
   S.prevBowler=S.bowler;
   S.bowler=name;
   S.endOverPending=false;
