@@ -1258,66 +1258,62 @@ function hStandings(){
   '</div>';
 }
 
+function oToBalls(o){var s=String(o||'0').split('.');return parseInt(s[0]||0)*6+parseInt(s[1]||0);}
+function ballsToOStr(balls){return Math.floor(balls/6)+'.'+(balls%6);}
 function hSeasonStats(){
   var batAgg={}, bowlAgg={};
-  M.forEach(function(m){
-    if(m.status!=='completed') return;
+  var completed=M.filter(function(m){return m.status==='completed';});
+  completed.forEach(function(m){
     m.innings.forEach(function(inn){
       if(inn.bat==='WPC Teal'){
         (inn.batters||[]).forEach(function(b){
-          if(!batAgg[b.n]) batAgg[b.n]={n:b.n,r:0,re:null,b:0,fs:0,sx:0};
+          if(!b.n)return;
+          if(!batAgg[b.n])batAgg[b.n]={n:b.n,r:0,b:0,fs:0,sx:0,m:0,hs:0};
           batAgg[b.n].r+=b.r||0;
-          if(b.re!=null){batAgg[b.n].re=(batAgg[b.n].re||0)+b.re;}
           batAgg[b.n].b+=b.b||0;
           batAgg[b.n].fs+=b.fs||0;
           batAgg[b.n].sx+=b.sx||0;
+          if((b.b||0)>0)batAgg[b.n].m++;
+          if((b.r||0)>batAgg[b.n].hs)batAgg[b.n].hs=b.r||0;
         });
       }
       if(inn.bowl==='WPC Teal'){
         (inn.bowlers||[]).forEach(function(b){
-          if(!bowlAgg[b.n]) bowlAgg[b.n]={n:b.n,o:0,r:0,w:0};
-          bowlAgg[b.n].o+=parseFloat(b.o)||0;
+          if(!b.n)return;
+          if(!bowlAgg[b.n])bowlAgg[b.n]={n:b.n,balls:0,r:0,w:0,m:0};
+          bowlAgg[b.n].balls+=oToBalls(b.o);
           bowlAgg[b.n].r+=b.r||0;
           bowlAgg[b.n].w+=b.w||0;
+          if(oToBalls(b.o)>0)bowlAgg[b.n].m++;
         });
       }
     });
   });
-  // Two separate sorted lists for the two scoring methods
-  var batByR=Object.values(batAgg).sort(function(a,b){return b.r-a.r;});
-  var batByRe=Object.values(batAgg).filter(function(b){return b.re!=null;}).sort(function(a,b){return b.re-a.re;});
-  var batRowsR=batByR.map(function(b){
-    var sr=b.b?(b.r/b.b*100).toFixed(1):'0.0';
+  var matchCount=completed.length;
+  var batRows=Object.values(batAgg).sort(function(a,b){return b.r-a.r;}).map(function(b){
+    var sr=b.b?(b.r/b.b*100).toFixed(0):'-';
     return '<tr>'+
       '<td><div class="bat-name">'+b.n+'</div></td>'+
+      '<td class="num" style="color:#666">'+b.m+'</td>'+
       '<td class="num-bold">'+b.r+'</td>'+
+      '<td class="num" style="color:#1a5e36;font-weight:700">'+b.hs+'</td>'+
       '<td class="num">'+b.b+'</td>'+
       '<td class="num">'+b.fs+'</td>'+
       '<td class="num">'+b.sx+'</td>'+
       '<td class="num">'+sr+'</td>'+
     '</tr>';
   }).join('');
-  var batRowsRe=batByRe.map(function(b){
-    var sr=b.b?(b.re/b.b*100).toFixed(1):'0.0';
-    return '<tr>'+
-      '<td><div class="bat-name">'+b.n+'</div></td>'+
-      '<td class="num-bold" style="color:#1a5e36">'+b.re+'</td>'+
-      '<td class="num">'+b.b+'</td>'+
-      '<td class="num">'+b.fs+'</td>'+
-      '<td class="num">'+b.sx+'</td>'+
-      '<td class="num">'+sr+'</td>'+
-    '</tr>';
-  }).join('');
-  var bowlers=Object.values(bowlAgg).sort(function(a,b){
-    if(b.w!==a.w) return b.w-a.w;
-    var eA=a.o?a.r/a.o:99, eB=b.o?b.r/b.o:99;
+  var bowlRows=Object.values(bowlAgg).sort(function(a,b){
+    if(b.w!==a.w)return b.w-a.w;
+    var eA=a.balls?(a.r/(a.balls/6)):99,eB=b.balls?(b.r/(b.balls/6)):99;
     return eA-eB;
-  });
-  var bowlRows=bowlers.map(function(b){
-    var ec=b.o?(b.r/b.o).toFixed(1):'-';
+  }).map(function(b){
+    var oStr=ballsToOStr(b.balls);
+    var ec=b.balls?(b.r/(b.balls/6)).toFixed(1):'-';
     return '<tr>'+
       '<td><div class="bat-name">'+b.n+'</div></td>'+
-      '<td class="num">'+b.o+'</td>'+
+      '<td class="num" style="color:#666">'+b.m+'</td>'+
+      '<td class="num">'+oStr+'</td>'+
       '<td class="num">'+b.r+'</td>'+
       '<td class="num-bold">'+b.w+'</td>'+
       '<td class="num">'+ec+'</td>'+
@@ -1325,26 +1321,18 @@ function hSeasonStats(){
   }).join('');
   return (
     '<div class="status-block">'+
-      '<div class="sc-block" style="margin:12px 0 1px">'+
-        '<div class="sc-hdr">WPC TEAL &ndash; RUNS OFF BAT</div>'+
+      '<div style="padding:10px 14px 2px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.4px">'+matchCount+' match'+(matchCount!==1?'es':'')+' played</div>'+
+      '<div class="sc-block" style="margin:4px 0 1px">'+
+        '<div class="sc-hdr">WPC TEAL &ndash; BATTING</div>'+
         '<table class="sc-tbl">'+
-          '<tr><th>BATTER</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
-          batRowsR+
+          '<tr><th>BATTER</th><th>M</th><th>R</th><th>HS</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
+          batRows+
         '</table>'+
       '</div>'+
-      (batRowsRe?
-        '<div class="sc-block" style="margin:1px 0 1px">'+
-          '<div class="sc-hdr">WPC TEAL &ndash; RUNS SCORED IN TOTAL</div>'+
-          '<table class="sc-tbl">'+
-            '<tr><th>BATTER</th><th>+E</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
-            batRowsRe+
-          '</table>'+
-        '</div>'
-      :'')+
       '<div class="sc-block" style="margin:1px 0 12px">'+
-        '<div class="sc-hdr">WPC TEAL &ndash; BOWLING STATS</div>'+
+        '<div class="sc-hdr">WPC TEAL &ndash; BOWLING</div>'+
         '<table class="sc-tbl">'+
-          '<tr><th>BOWLER</th><th>O</th><th>R</th><th>W</th><th>ECON</th></tr>'+
+          '<tr><th>BOWLER</th><th>M</th><th>O</th><th>R</th><th>W</th><th>ECON</th></tr>'+
           bowlRows+
         '</table>'+
       '</div>'+
