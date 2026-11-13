@@ -333,7 +333,7 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null,hubFiles:null,hubFilesLoading:false,hubUploadError:''};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null,hubFiles:null,hubFilesLoading:false,hubUploadError:'',amTeam1:'',amTeam2:''};
 var PLAYHQ_DEFAULT_URL='https://www.playhq.com/cricket-australia/org/wpc-cricket-club/7b159ec9/msw-pre-christmas-junior-competition-summer-202627/teams/wpc-teal/6bed293c';
 
 var KNOWN_TEAMS=[
@@ -372,6 +372,8 @@ function captureMatchForm(){
   var d=document.getElementById('hm-date');if(d&&d.value)S.amDate=d.value;
   var t=document.getElementById('hm-time');if(t&&t.value)S.amTime=t.value;
   var v=document.getElementById('hm-venue');if(v&&v.value)S.amVenue=v.value;
+  var t1=document.getElementById('hm-t1');if(t1)S.amTeam1=t1.value;
+  var t2=document.getElementById('hm-t2');if(t2)S.amTeam2=t2.value;
 }
 function resolveTeamFromForm(slot){
   var isNew=(slot==='t1'?S.newTeam1:S.newTeam2);
@@ -415,7 +417,7 @@ async function saveNewMatchHub(){
     grade:"MSW Stage 1 Super 7's",status:'upcoming',t1:t1,t2:t2,result:null
   });
   if(res.error){S.addMatchError='Save failed: '+res.error.message;render();return;}
-  S.showAddMatch=false;S.addMatchError='';S.newTeam1=false;S.newTeam2=false;S.amRnd='';S.amDate='';S.amTime='08:00';S.amVenue='';
+  S.showAddMatch=false;S.addMatchError='';S.newTeam1=false;S.newTeam2=false;S.amRnd='';S.amDate='';S.amTime='08:00';S.amVenue='';S.amTeam1='';S.amTeam2='';
   loadData();
 }
 
@@ -589,7 +591,8 @@ function hList(){
   ):'';
 
   // Add Match modal
-  var teamOpts=KNOWN_TEAMS.map(function(t){return '<option value="'+t.name+'">'+t.name+'</option>';}).join('');
+  var teamOptsFor=function(sel){return KNOWN_TEAMS.map(function(t){return '<option value="'+t.name+'"'+(sel===t.name?' selected':'')+'>'+t.name+'</option>';}).join('');};
+  var teamOpts=teamOptsFor('');
   var inp='width:100%;border:1.5px solid #ddd;border-radius:8px;padding:10px 12px;font-size:15px;box-sizing:border-box';
   var newTeamFields=function(slot,show){
     return '<div style="display:'+(show?'block':'none')+';margin-top:6px">'+
@@ -600,18 +603,18 @@ function hList(){
     '</div>';
   };
   var addModal=S.showAddMatch?(
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:flex-end" onclick="S.showAddMatch=false;S.addMatchError=\'\';S.newTeam1=false;S.newTeam2=false;render()">'+
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:flex-end" onclick="S.showAddMatch=false;S.addMatchError=\'\';S.newTeam1=false;S.newTeam2=false;S.amTeam1=\'\';S.amTeam2=\'\';render()">'+
       '<div class="modal" style="width:100%;border-radius:16px 16px 0 0;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto" onclick="event.stopPropagation()">'+
         '<div class="modal-title">Add Match</div>'+
         '<div class="modal-field"><label>Round *</label><input id="hm-rnd" type="number" class="modal-inp" value="'+S.amRnd+'" placeholder="e.g. 10"></div>'+
         '<div class="modal-field"><label>Date *</label><input id="hm-date" type="date" class="modal-inp" value="'+S.amDate+'"></div>'+
         '<div class="modal-field"><label>Time *</label><select id="hm-time" class="modal-inp">'+genTimeOpts(S.amTime)+'</select></div>'+
         '<div class="modal-field"><label>Venue *</label><input id="hm-venue" type="text" class="modal-inp" value="'+S.amVenue+'" placeholder="e.g. Yeronga Oval #1"></div>'+
-        '<div class="modal-field"><label>Team 1 *</label><select id="hm-t1" class="modal-inp" onchange="captureMatchForm();S.newTeam1=this.value===\'__new__\';render()"><option value="">Select…</option>'+teamOpts+'<option value="__new__"'+(S.newTeam1?' selected':'')+'>— Enter new team —</option></select>'+newTeamFields('t1',S.newTeam1)+'</div>'+
-        '<div class="modal-field"><label>Team 2 *</label><select id="hm-t2" class="modal-inp" onchange="captureMatchForm();S.newTeam2=this.value===\'__new__\';render()"><option value="">Select…</option>'+teamOpts+'<option value="__new__"'+(S.newTeam2?' selected':'')+'>— Enter new team —</option></select>'+newTeamFields('t2',S.newTeam2)+'</div>'+
+        '<div class="modal-field"><label>Team 1 *</label><select id="hm-t1" class="modal-inp" onchange="captureMatchForm();S.newTeam1=this.value===\'__new__\';render()"><option value="">Select…</option>'+teamOptsFor(S.amTeam1)+'<option value="__new__"'+(S.newTeam1?' selected':'')+'>— Enter new team —</option></select>'+newTeamFields('t1',S.newTeam1)+'</div>'+
+        '<div class="modal-field"><label>Team 2 *</label><select id="hm-t2" class="modal-inp" onchange="captureMatchForm();S.newTeam2=this.value===\'__new__\';render()"><option value="">Select…</option>'+teamOptsFor(S.amTeam2)+'<option value="__new__"'+(S.newTeam2?' selected':'')+'>— Enter new team —</option></select>'+newTeamFields('t2',S.newTeam2)+'</div>'+
         (S.addMatchError?'<div style="color:#c0392b;font-size:13px;font-weight:600;margin:4px 0;padding:8px 12px;background:#fdf0ee;border-radius:8px">'+S.addMatchError+'</div>':'')+
         '<div class="modal-btns">'+
-          '<button class="modal-btn modal-btn-cancel" onclick="S.showAddMatch=false;S.addMatchError=\'\';S.newTeam1=false;S.newTeam2=false;render()">Cancel</button>'+
+          '<button class="modal-btn modal-btn-cancel" onclick="S.showAddMatch=false;S.addMatchError=\'\';S.newTeam1=false;S.newTeam2=false;S.amTeam1=\'\';S.amTeam2=\'\';render()">Cancel</button>'+
           '<button class="modal-btn modal-btn-add" onclick="saveNewMatchHub()">Add Match</button>'+
         '</div>'+
       '</div>'+
@@ -771,7 +774,7 @@ function hList(){
       )+
     '</div>'+
     (S.listTab==='fixture'?
-      '<button class="fab" onclick="S.showAddMatch=true;S.addMatchError=\'\';S.newTeam1=false;S.newTeam2=false;S.amRnd=\'\';S.amDate=\'\';S.amTime=\'08:00\';S.amVenue=\'\';render()">+</button>'+
+      '<button class="fab" onclick="S.showAddMatch=true;S.addMatchError=\'\';S.newTeam1=false;S.newTeam2=false;S.amRnd=\'\';S.amDate=\'\';S.amTime=\'08:00\';S.amVenue=\'\';S.amTeam1=\'\';S.amTeam2=\'\';render()">+</button>'+
       '<button class="fab fab-sync" onclick="S.showSyncModal=true;S.syncResult=null;render()" title="Sync from PlayHQ">↺</button>':'')+
     addModal+syncModal+editResultModal
   );
