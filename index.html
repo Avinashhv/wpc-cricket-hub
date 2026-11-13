@@ -1291,32 +1291,17 @@ function hSeasonStats(){
   });
   var matchCount=completed.length;
   var batRows=Object.values(batAgg).sort(function(a,b){return b.r-a.r;}).map(function(b){
-    var sr=b.b?(b.r/b.b*100).toFixed(0):'-';
     return '<tr>'+
       '<td><div class="bat-name">'+b.n+'</div></td>'+
       '<td class="num" style="color:#666">'+b.m+'</td>'+
       '<td class="num-bold">'+b.r+'</td>'+
-      '<td class="num" style="color:#1a5e36;font-weight:700">'+b.hs+'</td>'+
-      '<td class="num">'+b.b+'</td>'+
-      '<td class="num">'+b.fs+'</td>'+
-      '<td class="num">'+b.sx+'</td>'+
-      '<td class="num">'+sr+'</td>'+
     '</tr>';
   }).join('');
-  var bowlRows=Object.values(bowlAgg).sort(function(a,b){
-    if(b.w!==a.w)return b.w-a.w;
-    var eA=a.balls?(a.r/(a.balls/6)):99,eB=b.balls?(b.r/(b.balls/6)):99;
-    return eA-eB;
-  }).map(function(b){
-    var oStr=ballsToOStr(b.balls);
-    var ec=b.balls?(b.r/(b.balls/6)).toFixed(1):'-';
+  var bowlRows=Object.values(bowlAgg).sort(function(a,b){return b.w-a.w;}).map(function(b){
     return '<tr>'+
       '<td><div class="bat-name">'+b.n+'</div></td>'+
       '<td class="num" style="color:#666">'+b.m+'</td>'+
-      '<td class="num">'+oStr+'</td>'+
-      '<td class="num">'+b.r+'</td>'+
       '<td class="num-bold">'+b.w+'</td>'+
-      '<td class="num">'+ec+'</td>'+
     '</tr>';
   }).join('');
   return (
@@ -1325,14 +1310,14 @@ function hSeasonStats(){
       '<div class="sc-block" style="margin:4px 0 1px">'+
         '<div class="sc-hdr">WPC TEAL &ndash; BATTING</div>'+
         '<table class="sc-tbl">'+
-          '<tr><th>BATTER</th><th>M</th><th>R</th><th>HS</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
+          '<tr><th>BATTER</th><th>M</th><th>R</th></tr>'+
           batRows+
         '</table>'+
       '</div>'+
       '<div class="sc-block" style="margin:1px 0 12px">'+
         '<div class="sc-hdr">WPC TEAL &ndash; BOWLING</div>'+
         '<table class="sc-tbl">'+
-          '<tr><th>BOWLER</th><th>M</th><th>O</th><th>R</th><th>W</th><th>ECON</th></tr>'+
+          '<tr><th>BOWLER</th><th>M</th><th>W</th></tr>'+
           bowlRows+
         '</table>'+
       '</div>'+
