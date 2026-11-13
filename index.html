@@ -38,6 +38,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .card:active{background:#f5f5f5}
 .card-past{background:#f4f4f4}
 .card-past:active{background:#ebebeb}
+.card-completed{background:#e3f4fc}
+.card-completed:active{background:#ceeaf8}
 .card-top{padding:10px 14px;border-bottom:1px solid #f2f2f2;display:flex;align-items:center;gap:10px}
 .badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:3px;letter-spacing:.3px;white-space:nowrap}
 .badge-upcoming{background:#e3f2fd;color:#1565c0}
@@ -731,7 +733,7 @@ function hList(){
     }
     return (
       '<div class="round-hdr"><span class="round-ttl">Round '+m.round+'</span><span class="round-dt">'+m.date+'</span></div>'+
-      '<div class="card'+(m.status==='completed'||m.status==='abandoned'?' card-past':'')+'" onclick="openM('+m.id+')">'+
+      '<div class="card'+(m.status==='completed'?' card-completed':m.status==='abandoned'?' card-past':'')+'" onclick="openM('+m.id+')">'+
         '<div class="card-top">'+
           '<span class="badge badge-'+m.status+'">'+(m.status==='live'?'● LIVE':m.status.toUpperCase())+'</span>'+
           '<span class="card-time">'+m.datetime+'</span>'+
