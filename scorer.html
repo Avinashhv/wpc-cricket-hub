@@ -871,7 +871,9 @@ function rScoring(){
     '';
 
   var ballBtns=inningsDone?
-    '<button class="btn btn-gold" onclick="endInnings()">End Innings '+S.innNum+'</button>'
+    (S.innNum===2
+      ? '<button class="btn btn-gold" style="font-size:17px;padding:16px" onclick="endInnings()">🏁 Finish Match</button>'
+      : '<button class="btn btn-gold" onclick="endInnings()">End Innings 1</button>')
     :
     (S.retirePending?
       '<div>'+
@@ -1567,9 +1569,9 @@ function rDone(){
         '<div style="margin-top:8px;opacity:.9">'+inn1.bat+': '+inn1.total+'/'+inn1.wkts+' (+'+inn2.bonus+') = '+(inn1.total+(inn2.bonus||0))+'</div>'+
         '<div style="opacity:.9">'+S.batTeam+': '+inn2.total+'/'+inn2.wkts+' (+'+inn1.bonus+') = '+inn2.score+'</div>'+
       '</div>'+
-      '<div style="text-align:center;padding:20px;opacity:.5;font-size:13px">Full scorecard now live in the hub</div>'+
-      '<button class="btn btn-dim" style="margin-bottom:8px" onclick="S.editBallIdx=null;S.screen=\'editovers\';r()">✎ Review / Edit Overs</button>'+
-      '<button class="btn btn-dim" onclick="S.screen=\'matches\';loadMatches()">← Back to Matches</button>'+
+      '<button class="btn btn-gold" style="font-size:17px;padding:16px;margin-top:8px" onclick="finalizeMatch()">✔ Finish Match &amp; Update Stats</button>'+
+      '<button class="btn btn-dim" style="margin-top:8px" onclick="S.editBallIdx=null;S.screen=\'editovers\';r()">✎ Review / Edit Overs</button>'+
+      '<button class="btn btn-dim" style="margin-top:4px" onclick="S.screen=\'matches\';loadMatches()">← Back to Matches</button>'+
     '</div>');
 }
 
