@@ -755,12 +755,15 @@ function hList(){
       '<div class="tab'+(S.listTab==='fixture'?' on':'')+'" onclick="setListTab(\'fixture\')">FIXTURE</div>'+
       '<div class="tab'+(S.listTab==='standings'?' on':'')+'" onclick="setListTab(\'standings\')">STANDINGS</div>'+
       '<div class="tab'+(S.listTab==='stats'?' on':'')+'" onclick="setListTab(\'stats\')">STATS</div>'+
+      '<div class="tab'+(S.listTab==='misc'?' on':'')+'" onclick="setListTab(\'misc\')">MISC</div>'+
     '</div>'+
     '<div class="pb">'+
       (S.listTab==='stats'
         ? hSeasonStats()
         : S.listTab==='standings'
         ? hStandings()
+        : S.listTab==='misc'
+        ? hMisc()
         : '<div class="grade-bar">'+
             '<div><div class="grade-lbl">Grade</div><div class="grade-name">MSW Stage 1 Super 7\'s</div></div>'+
             '<div class="grade-link">Fixture ›</div>'+
@@ -1407,6 +1410,53 @@ function hStatus(m){
   );
 }
 function toggleStatSec(s){if(s==='bat')S.statBat=!S.statBat;else S.statBowl=!S.statBowl;render();}
+
+function hMisc(){
+  var contacts=[
+    {team:'WPC Teal',role:'Coach',name:'Sajid Mahmood',mobile:'+61 431 431 003'},
+    {team:'WPC Teal',role:'Manager',name:'Avinash Hulimavu',mobile:'0412 940 420'},
+    {team:'BSK Cubs Bronze',role:'Coach',name:'Nicholas Singh',mobile:'+61 407 072 277'},
+    {team:'BSK Cubs Bronze',role:'Manager',name:'Dhaval Gandhi',mobile:'+61 410 020 031'},
+    {team:'Souths Bulls',role:'Coach',name:'Christian James',mobile:'+61 426 426 812'},
+    {team:'Souths Hawks',role:'Coach',name:'Adam Irwin',mobile:'+61 434 832 556'},
+    {team:'WPC Aqua',role:'Coach',name:'Garret Geoghegan',mobile:'0411 054 309'},
+    {team:'WPC Aqua',role:'Manager',name:'Samuel Sanders',mobile:'+61 420 375 789'},
+    {team:'WPC Yellow',role:'Coach',name:'Raj Kamal Singh',mobile:'+61 481 601 043'},
+    {team:'WPC Yellow',role:'Manager',name:'Charlie Ferris',mobile:'+61 413 541 080'},
+  ];
+  var contactRows=contacts.map(function(c){
+    return '<tr>'+
+      '<td style="font-weight:600">'+c.team+'</td>'+
+      '<td style="color:#666;font-size:12px">'+c.role+'</td>'+
+      '<td>'+c.name+'</td>'+
+      '<td><a href="tel:'+c.mobile.replace(/\s/g,'')+'" style="color:#1a73e8;text-decoration:none">'+c.mobile+'</a></td>'+
+    '</tr>';
+  }).join('');
+
+  var links=[
+    {label:'PlayHQ Fixture',url:'https://www.playhq.com/cricket-australia/org/wpc-cricket-club/7b159ec9/msw-pre-christmas-junior-competition-summer-202627/teams/wpc-teal/6bed293c'},
+    {label:'MSW Team Contacts Sheet',url:'https://docs.google.com/spreadsheets/d/1cuQDngvwkxaShucJYoMvFbtk0H6kaRg4/htmlview'},
+  ];
+  var linkRows=links.map(function(l){
+    return '<div style="padding:10px 0;border-bottom:1px solid #f0f0f0">'+
+      '<a href="'+l.url+'" target="_blank" style="color:#1a73e8;font-size:14px;text-decoration:none">'+l.label+' ›</a>'+
+    '</div>';
+  }).join('');
+
+  return '<div style="padding:14px">'+
+    '<div class="sc-wrap">'+
+      '<div class="sc-hdr">TEAM CONTACTS</div>'+
+      '<table class="sc-tbl" style="font-size:13px">'+
+        '<tr><th>TEAM</th><th>ROLE</th><th>NAME</th><th>MOBILE</th></tr>'+
+        contactRows+
+      '</table>'+
+    '</div>'+
+    '<div class="sc-wrap" style="margin-top:12px">'+
+      '<div class="sc-hdr">LINKS</div>'+
+      '<div style="padding:0 14px">'+linkRows+'</div>'+
+    '</div>'+
+  '</div>';
+}
 
 // ── actions ──
 function openM(id){S.view='match';S.mid=id;S.tab='summary';S.inn=0;S.docFile=null;render();scrollTo(0,0);}
