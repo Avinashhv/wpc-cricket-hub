@@ -869,9 +869,8 @@ function rScoring(){
     (S.retirePending?
       '<div>'+
         '<div class="retire-bar">'+(S.retiringBatter||S.batOn)+' has reached quota ('+(S.retireAt||RETIRE_AT)+' balls) — retire?</div>'+
-        '<div style="display:flex;gap:8px;margin-top:8px">'+
-          '<button class="btn btn-gold" style="flex:2" onclick="doRetire()">▶ Retire &amp; bring next in</button>'+
-          '<button class="btn btn-dim" style="flex:1;font-size:12px" onclick="swapRetiree()">⇄ '+(S.retiringBatter===S.batOn?S.batOff:S.batOn)+'</button>'+
+        '<div style="margin-top:8px">'+
+          '<button class="btn btn-gold" onclick="doRetire()">▶ Retire &amp; bring next in</button>'+
         '</div>'+
         '<div style="margin-top:6px">'+
           '<button class="btn" style="width:100%;background:rgba(255,255,255,.1);font-size:13px" onclick="continueAfterQuota()">▷ Continue batting</button>'+
