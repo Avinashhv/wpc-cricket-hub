@@ -333,7 +333,7 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null,hubFiles:null,hubFilesLoading:false,hubUploadError:''};
 var PLAYHQ_DEFAULT_URL='https://www.playhq.com/cricket-australia/org/wpc-cricket-club/7b159ec9/msw-pre-christmas-junior-competition-summer-202627/teams/wpc-teal/6bed293c';
 
 var KNOWN_TEAMS=[
@@ -1443,8 +1443,45 @@ function hMisc(){
     '</div>';
   }).join('');
 
+  // Files section
+  var SUPA_PUBLIC='https://xmnmwnfmmopsxhihmyyg.supabase.co/storage/v1/object/public/hub-files/';
+  var filesHtml='';
+  if(S.hubFilesLoading){
+    filesHtml='<div style="padding:14px;color:#999;font-size:13px">Loading…</div>';
+  } else if(!S.hubFiles||!S.hubFiles.length){
+    filesHtml='<div style="padding:14px;color:#999;font-size:13px;font-style:italic">No files uploaded yet.</div>';
+  } else {
+    var icons={'pdf':'📄','png':'🖼','jpg':'🖼','jpeg':'🖼','xlsx':'📊','xls':'📊','doc':'📝','docx':'📝'};
+    filesHtml='<div style="padding:0 14px">'+
+      S.hubFiles.map(function(f){
+        var ext=(f.name.split('.').pop()||'').toLowerCase();
+        var icon=icons[ext]||'📎';
+        var url=SUPA_PUBLIC+encodeURIComponent(f.name);
+        var size=f.metadata&&f.metadata.size?(f.metadata.size<1024*1024?(Math.round(f.metadata.size/1024)+'KB'):(Math.round(f.metadata.size/1024/1024*10)/10+'MB')):'';
+        var label=f.name.replace(/^\d+_/,'');
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0">'+
+          '<span style="font-size:20px">'+icon+'</span>'+
+          '<div style="flex:1;min-width:0">'+
+            '<a href="'+url+'" target="_blank" style="color:#1a73e8;text-decoration:none;font-size:14px;font-weight:500;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+label+'</a>'+
+            (size?'<div style="font-size:11px;color:#999">'+size+'</div>':'')+
+          '</div>'+
+          '<button onclick="deleteHubFile(\''+f.name+'\')" style="border:none;background:none;color:#ccc;font-size:18px;cursor:pointer;padding:4px">×</button>'+
+        '</div>';
+      }).join('')+
+    '</div>';
+  }
+
   return '<div style="padding:14px">'+
     '<div class="sc-wrap">'+
+      '<div class="sc-hdr" style="display:flex;justify-content:space-between;align-items:center">'+
+        '<span>FILES</span>'+
+        '<button onclick="triggerFileUpload()" style="background:#2a7d32;color:#fff;border:none;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">+ Upload</button>'+
+      '</div>'+
+      '<input id="hub-file-input" type="file" style="display:none" onchange="uploadHubFile(this)" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.doc,.docx">'+
+      (S.hubUploadError?'<div style="padding:8px 14px;color:#c62828;font-size:12px">'+S.hubUploadError+'</div>':'')+
+      filesHtml+
+    '</div>'+
+    '<div class="sc-wrap" style="margin-top:12px">'+
       '<div class="sc-hdr">TEAM CONTACTS</div>'+
       '<table class="sc-tbl" style="font-size:13px">'+
         '<tr><th>TEAM</th><th>ROLE</th><th>NAME</th><th>MOBILE</th></tr>'+
@@ -1462,7 +1499,35 @@ function hMisc(){
 function openM(id){S.view='match';S.mid=id;S.tab='summary';S.inn=0;S.docFile=null;render();scrollTo(0,0);}
 function goBack(){S.view='list';S.mid=null;S.docFile=null;render();scrollTo(0,0);}
 function setTab(t){S.tab=t;S.docFile=null;render();}
-function setListTab(t){S.listTab=t;render();scrollTo(0,0);}
+function setListTab(t){S.listTab=t;render();scrollTo(0,0);if(t==='misc'&&S.hubFiles===null)loadHubFiles();}
+
+async function loadHubFiles(){
+  S.hubFilesLoading=true;render();
+  var {data,error}=await db.storage.from('hub-files').list('',{sortBy:{column:'created_at',order:'desc'}});
+  S.hubFilesLoading=false;
+  S.hubFiles=error?[]:data.filter(function(f){return f.name!=='.emptyFolderPlaceholder';});
+  render();
+}
+
+function triggerFileUpload(){document.getElementById('hub-file-input').click();}
+
+async function uploadHubFile(input){
+  var file=input.files[0];
+  if(!file)return;
+  S.hubUploadError='';
+  S.hubFilesLoading=true;render();
+  var path=Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  var {error}=await db.storage.from('hub-files').upload(path,file,{upsert:false});
+  if(error){S.hubUploadError=error.message;S.hubFilesLoading=false;render();return;}
+  input.value='';
+  await loadHubFiles();
+}
+
+async function deleteHubFile(path){
+  if(!confirm('Delete '+path+'?'))return;
+  await db.storage.from('hub-files').remove([path]);
+  S.hubFiles=null;loadHubFiles();
+}
 function setInn(i){S.inn=i;render();}
 
 function saveNav(){
