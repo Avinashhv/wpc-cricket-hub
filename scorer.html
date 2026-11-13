@@ -750,6 +750,10 @@ function currentOverBalls(){
 
 function rScoring(){
   if(S.endOverPending){rEndOver();return;}
+  // Last pair: if the maxed batter is on strike (can happen after load/resume), auto-correct
+  if(S.bs[S.batOn]&&S.bs[S.batOn].maxed&&S.batOff){
+    var tmx=S.batOn;S.batOn=S.batOff;S.batOff=tmx;
+  }
 
   var bs=S.bs[S.batOn]||{r:0,re:0,b:0};
   var bsOff=S.bs[S.batOff]||{r:0,re:0,b:0};
@@ -971,6 +975,10 @@ function rScoring(){
 function ball(type){
   if(S.retirePending||S.endOverPending)return;
   var bd=BD[type];if(!bd)return;
+  // Last pair: if striker has hit quota, redirect this ball to the non-striker before recording
+  if(S.bs[S.batOn]&&S.bs[S.batOn].maxed&&S.batOff){
+    var tmp=S.batOn;S.batOn=S.batOff;S.batOff=tmp;
+  }
   var ov=Math.floor(S.balls.length/OVER_SIZE);
   var b={type:type,batter:S.batOn,bowler:S.bowler,ov:ov,
          bat:bd.bat,re:bd.re,tot:bd.bat+bd.ex,isWkt:false,how:'',wktRuns:0};
