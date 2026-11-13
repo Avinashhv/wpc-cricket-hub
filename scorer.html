@@ -591,7 +591,7 @@ function rSetup(){
     var batLines=sz.batTxt?sz.batTxt.split('\n').map(function(x){return x.trim();}):[];
     var bowlLines=sz.bowlTxt?sz.bowlTxt.split('\n').map(function(x){return x.trim();}):[];
     // Build suggestion list from all known names (current innings + localStorage history + WPC Teal defaults)
-    var WPC_TEAL=['Tom','Serhan','Surya','Arish','Rinayra','Aksharan','Zac','Avidan'];
+    var WPC_TEAL=['Tom','Serhan','Surya','Arish','Rinayra','Aksharan','Zak','Avidan'];
     var knownSet={};
     var allKnown=[].concat(WPC_TEAL,batLines,bowlLines,S.batOrder||[],S.bowlOrder||[]);
     try{var stored=JSON.parse(localStorage.getItem('wpc_known_players')||'[]');allKnown=allKnown.concat(stored);}catch(e){}
