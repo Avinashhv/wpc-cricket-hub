@@ -90,7 +90,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .inn-btn{width:38px;height:38px;border-radius:50%;border:2px solid #1a5e36;font-size:15px;font-weight:800;cursor:pointer;background:#fff;color:#1a5e36;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .inn-btn.on{background:#1a5e36;color:#fff}
 
-/* ── Scorecard ── */
+/* ── Scorecard (TV style) ── */
 .sc-block{background:#fff;margin-bottom:1px}
 .sc-hdr{background:#1a5e36;color:#fff;padding:10px 16px;font-size:12px;font-weight:800;letter-spacing:.5px}
 .sc-tbl{width:100%;border-collapse:collapse}
@@ -108,6 +108,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .sc-total{padding:12px 14px;font-size:14px;font-weight:800;display:flex;justify-content:space-between;border-bottom:2px solid #ddd}
 .sc-bonus{padding:9px 14px;font-size:12px;color:#1a7a3c;background:#f0fff4;font-style:italic;border-bottom:1px solid #e0ede0}
 .sc-gap{height:12px;background:#f0f0f0}
+/* TV scorecard header */
+.tv-sc-hdr{background:linear-gradient(135deg,#0d1f35 0%,#1b3a5c 100%);color:#fff;padding:13px 16px}
+.tv-sc-team{font-size:17px;font-weight:900;letter-spacing:.6px;text-transform:uppercase}
+.tv-sc-sub{font-size:9px;color:rgba(255,255,255,.5);margin-top:3px;letter-spacing:1px;text-transform:uppercase}
+/* TV batting rows */
+.tv-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #efefef;background:#fff;gap:12px}
+.tv-row-notout{background:#e8f5e9}
+.tv-row-info{flex:1;min-width:0}
+.tv-row-name{font-size:14px;font-weight:800;color:#111;text-transform:uppercase;letter-spacing:.3px}
+.tv-row-dis{font-size:11px;color:#999;margin-top:2px;text-transform:uppercase;letter-spacing:.1px}
+.tv-row-dis-notout{color:#1a7a3c;font-weight:700}
+.tv-row-score{text-align:right;min-width:52px}
+.tv-row-runs{font-size:26px;font-weight:900;color:#0d1f35;line-height:1}
+.tv-row-runs-notout{color:#1a5e36}
+.tv-row-balls{font-size:11px;color:#aaa;margin-top:2px}
+/* TV total/extras */
+.tv-extras-row{background:#f5f5f5;padding:9px 14px;font-size:12px;color:#555;display:flex;justify-content:space-between;border-bottom:1px solid #e8e8e8;font-style:italic}
+.tv-total-row{background:#0d1f35;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.tv-total-lbl{font-size:12px;font-weight:600;opacity:.75;text-transform:uppercase;letter-spacing:.3px}
+.tv-total-num{font-size:30px;font-weight:900;letter-spacing:1px}
+.tv-bonus-row{background:#e8f5e9;color:#1a7a3c;padding:8px 14px;font-size:12px;font-style:italic}
+/* TV bowling rows */
+.tv-bowl-col-hdr{display:flex;padding:5px 14px;background:#f0f0f0;border-bottom:1px solid #e0e0e0}
+.tv-bowl-col-name{flex:1;font-size:9px;font-weight:800;color:#888;letter-spacing:.6px;text-transform:uppercase}
+.tv-bowl-col-stat{min-width:38px;text-align:right;font-size:9px;font-weight:800;color:#888;letter-spacing:.6px;text-transform:uppercase}
+.tv-bowl-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #efefef;background:#fff}
+.tv-bowl-name{flex:1;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:#111}
+.tv-bowl-stat{min-width:38px;text-align:right;font-size:14px;color:#555}
+.tv-bowl-wkt{min-width:38px;text-align:right;font-size:16px;font-weight:900}
 
 /* ── Match info (upcoming) ── */
 .info-block{background:#fff;padding:0 14px}
@@ -866,54 +895,42 @@ function hDetail(mid){
 }
 
 function hScorecard(inn){
-  var hasRe=inn.batters.some(function(b){return b.re!=null;});
   var batRows=inn.batters.map(function(b){
-    return (
-      '<tr>'+
-        '<td><div class="bat-name">'+b.n+'</div><div class="bat-dis">'+b.d+'</div></td>'+
-        '<td class="num-bold">'+b.r+'</td>'+
-        (hasRe?'<td class="num" style="color:#1a5e36;font-weight:700">'+b.re+'</td>':'')+
-        '<td class="num">'+b.b+'</td>'+
-        '<td class="num">'+b.fs+'</td>'+
-        '<td class="num">'+b.sx+'</td>'+
-        '<td class="num">'+sr(b.r,b.b)+'</td>'+
-      '</tr>'
-    );
+    var d=b.d||'';
+    var notout=d===''||d.toLowerCase()==='not out'||d.toLowerCase()==='retired';
+    var disHtml=notout
+      ?'<div class="tv-row-dis tv-row-dis-notout">'+(d?d.toUpperCase():'NOT OUT')+'</div>'
+      :'<div class="tv-row-dis">'+d.toUpperCase()+'</div>';
+    return '<div class="tv-row'+(notout?' tv-row-notout':'')+'">' +
+      '<div class="tv-row-info"><div class="tv-row-name">'+b.n+'</div>'+disHtml+'</div>'+
+      '<div class="tv-row-score"><div class="tv-row-runs'+(notout?' tv-row-runs-notout':'')+'">'+b.r+'</div><div class="tv-row-balls">'+b.b+' b</div></div>'+
+    '</div>';
   }).join('');
 
   var bowlRows=inn.bowlers.map(function(b){
-    return (
-      '<tr>'+
-        '<td><div class="bat-name">'+b.n+'</div></td>'+
-        '<td class="num">'+b.o+'</td>'+
-        '<td class="num">'+b.r+'</td>'+
-        '<td class="num-bold">'+b.w+'</td>'+
-        '<td class="num">'+b.ec.toFixed(1)+'</td>'+
-      '</tr>'
-    );
+    return '<div class="tv-bowl-row">'+
+      '<div class="tv-bowl-name">'+b.n+'</div>'+
+      '<div class="tv-bowl-stat">'+b.o+'</div>'+
+      '<div class="tv-bowl-stat">'+b.r+'</div>'+
+      '<div class="tv-bowl-wkt" style="color:'+(b.w>0?'#1a5e36':'#0d1f35')+'">'+b.w+'</div>'+
+    '</div>';
   }).join('');
 
   var wktWord=inn.wkts===1?'wicket':'wickets';
 
   return (
     '<div class="sc-block">'+
-      '<div class="sc-hdr">'+inn.bat.toUpperCase()+' &ndash; BATTING</div>'+
-      '<table class="sc-tbl">'+
-        '<tr><th>BATTER</th><th>R</th>'+(hasRe?'<th title="Runs scored with extras">+E</th>':'')+
-        '<th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>'+
-        batRows+
-      '</table>'+
-      '<div class="sc-extras"><span>Extras '+extStr(inn.extras)+'</span><span>'+inn.extras.tot+'</span></div>'+
-      '<div class="sc-total"><span>Total ('+inn.wkts+' wkts, '+inn.overs+' ov)</span><span>'+inn.total+'</span></div>'+
-      '<div class="sc-bonus">'+inn.bowl+' receive +'+inn.bonus+' bonus runs ('+inn.wkts+' '+wktWord+' taken)</div>'+
+      '<div class="tv-sc-hdr"><div class="tv-sc-team">'+inn.bat+'</div><div class="tv-sc-sub">Batting</div></div>'+
+      batRows+
+      '<div class="tv-extras-row"><span>Extras '+extStr(inn.extras)+'</span><span>'+inn.extras.tot+'</span></div>'+
+      '<div class="tv-total-row"><span class="tv-total-lbl">Total &nbsp;'+inn.wkts+' wkts &nbsp;'+inn.overs+' ov</span><span class="tv-total-num">'+inn.total+'</span></div>'+
+      '<div class="tv-bonus-row">'+inn.bowl+' receive +'+inn.bonus+' bonus runs ('+inn.wkts+' '+wktWord+' taken)</div>'+
     '</div>'+
     '<div class="sc-gap"></div>'+
     '<div class="sc-block">'+
-      '<div class="sc-hdr">'+inn.bowl.toUpperCase()+' &ndash; BOWLING</div>'+
-      '<table class="sc-tbl">'+
-        '<tr><th>BOWLER</th><th>O</th><th>R</th><th>W</th><th>ECON</th></tr>'+
-        bowlRows+
-      '</table>'+
+      '<div class="tv-sc-hdr"><div class="tv-sc-team">'+inn.bowl+'</div><div class="tv-sc-sub">Bowling</div></div>'+
+      '<div class="tv-bowl-col-hdr"><div class="tv-bowl-col-name">Bowler</div><div class="tv-bowl-col-stat">O</div><div class="tv-bowl-col-stat">R</div><div class="tv-bowl-col-stat">W</div></div>'+
+      bowlRows+
     '</div>'
   );
 }
