@@ -362,7 +362,7 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null,hubFiles:null,hubFilesLoading:false,hubUploadError:'',amTeam1:'',amTeam2:''};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null,hubFiles:null,hubFilesLoading:false,hubUploadError:'',amTeam1:'',amTeam2:'',showEditInn:false,editInnId:null,editBatters:[],editBowlers:[],editXtraW:0,editXtraB:0,editXtraLb:0,editXtraNb:0,editTotal:0,editWkts:0,editOvers:'0',editBonus:0,editSaving:false,editSaveError:''};
 var PLAYHQ_DEFAULT_URL='https://www.playhq.com/cricket-australia/org/wpc-cricket-club/7b159ec9/msw-pre-christmas-junior-competition-summer-202627/teams/wpc-teal/6bed293c';
 
 var KNOWN_TEAMS=[
@@ -887,7 +887,11 @@ function hDetail(mid){
     '</div>'+
     toggleHtml+
     '<div class="pb">'+bodyHtml+
-      '<div style="padding:16px 0 8px;text-align:center">'+
+      (m.status==='completed'&&hasInn&&S.tab==='summary'?
+        '<div style="padding:16px 16px 4px">'+
+          '<button onclick="openEditInn('+m.innings[S.inn].id+')" style="width:100%;padding:13px;background:#e8f5e9;color:#1a5e36;border:1.5px solid #a5d6a7;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Edit Innings '+(S.inn+1)+' Data</button>'+
+        '</div>':'')+
+      '<div style="padding:12px 0 8px;text-align:center">'+
         '<button onclick="deleteMatch('+m.id+')" style="background:none;border:none;color:#ccc;font-size:12px;cursor:pointer;text-decoration:underline">Delete match</button>'+
       '</div>'+
     '</div>'
@@ -1550,6 +1554,99 @@ async function deleteHubFile(path){
 }
 function setInn(i){S.inn=i;render();}
 
+// ── Edit Innings ──
+function openEditInn(innId){
+  var m=getM(S.mid);
+  if(!m||!m.innings)return;
+  var inn=m.innings.find(function(i){return i.id===innId;});
+  if(!inn)return;
+  S.showEditInn=true;S.editInnId=innId;
+  S.editBatters=inn.batters.map(function(b){return {n:b.n||'',r:+(b.r||0),b:+(b.b||0),fs:+(b.fs||0),sx:+(b.sx||0),d:b.d||''};});
+  S.editBowlers=inn.bowlers.map(function(b){return {n:b.n||'',o:+(b.o||0),r:+(b.r||0),w:+(b.w||0)};});
+  var ex=inn.extras||{};
+  S.editXtraW=+(ex.w||0);S.editXtraB=+(ex.b||0);S.editXtraLb=+(ex.lb||0);S.editXtraNb=+(ex.nb||0);
+  S.editTotal=+(inn.total||0);S.editWkts=+(inn.wkts||0);S.editOvers=inn.overs||'0';S.editBonus=+(inn.bonus||0);
+  S.editSaving=false;S.editSaveError='';
+  render();
+}
+function addEditBatter(){S.editBatters.push({n:'',r:0,b:0,fs:0,sx:0,d:'not out'});render();}
+function removeEditBatter(i){S.editBatters.splice(i,1);render();}
+function addEditBowler(){S.editBowlers.push({n:'',o:0,r:0,w:0});render();}
+function removeEditBowler(i){S.editBowlers.splice(i,1);render();}
+async function saveEditInn(){
+  S.editSaving=true;S.editSaveError='';render();
+  var xtot=(+S.editXtraW)+(+S.editXtraB)+(+S.editXtraLb)+(+S.editXtraNb);
+  var ex={w:+S.editXtraW,b:+S.editXtraB,lb:+S.editXtraLb,nb:+S.editXtraNb,tot:xtot};
+  var bowlers=S.editBowlers.map(function(b){var o=+b.o;return {n:b.n,o:o,r:+b.r,w:+b.w,ec:o?(+b.r/o):0};});
+  var batters=S.editBatters.map(function(b){return {n:b.n,r:+b.r,b:+b.b,fs:+b.fs,sx:+b.sx,d:b.d,re:null};});
+  var {error}=await db.from('innings').update({batters:batters,bowlers:bowlers,extras:ex,total:+S.editTotal,wkts:+S.editWkts,overs:S.editOvers,bonus:+S.editBonus}).eq('id',S.editInnId);
+  if(error){S.editSaving=false;S.editSaveError=error.message;render();return;}
+  S.showEditInn=false;
+  loadData();
+}
+function hEditInnModal(){
+  var inp='border:1px solid #e0e0e0;border-radius:7px;padding:7px 10px;font-size:14px;box-sizing:border-box;width:100%;background:#fff';
+  var inpSm='border:1px solid #e0e0e0;border-radius:7px;padding:7px 4px;font-size:14px;box-sizing:border-box;width:100%;text-align:center;background:#fff';
+  var lbl='font-size:10px;font-weight:700;color:#999;letter-spacing:.4px;text-transform:uppercase;display:block;margin-bottom:3px';
+  var secHdr='padding:14px 0 8px;font-size:11px;font-weight:800;color:#1a5e36;letter-spacing:.5px;text-transform:uppercase';
+  var batRows=S.editBatters.map(function(b,i){
+    return '<div style="background:#f9f9f9;border-radius:10px;padding:12px;margin-bottom:8px">'+
+      '<div style="display:flex;gap:8px;margin-bottom:8px">'+
+        '<div style="flex:1"><label style="'+lbl+'">Name</label><input style="'+inp+'" value="'+b.n.replace(/"/g,'&quot;')+'" oninput="S.editBatters['+i+'].n=this.value"></div>'+
+        '<button onclick="removeEditBatter('+i+')" style="border:none;background:#fce4e4;color:#c0392b;border-radius:7px;padding:0 10px;cursor:pointer;font-size:16px;align-self:flex-end;height:36px;flex-shrink:0">✕</button>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px">'+
+        '<div><label style="'+lbl+'">R</label><input style="'+inpSm+'" type="number" min="0" value="'+b.r+'" oninput="S.editBatters['+i+'].r=+this.value"></div>'+
+        '<div><label style="'+lbl+'">B</label><input style="'+inpSm+'" type="number" min="0" value="'+b.b+'" oninput="S.editBatters['+i+'].b=+this.value"></div>'+
+        '<div><label style="'+lbl+'">4s</label><input style="'+inpSm+'" type="number" min="0" value="'+b.fs+'" oninput="S.editBatters['+i+'].fs=+this.value"></div>'+
+        '<div><label style="'+lbl+'">6s</label><input style="'+inpSm+'" type="number" min="0" value="'+b.sx+'" oninput="S.editBatters['+i+'].sx=+this.value"></div>'+
+      '</div>'+
+      '<div><label style="'+lbl+'">Dismissal</label><input style="'+inp+'" value="'+b.d.replace(/"/g,'&quot;')+'" oninput="S.editBatters['+i+'].d=this.value" placeholder="not out / caught / bowled…"></div>'+
+    '</div>';
+  }).join('');
+  var bowlRows=S.editBowlers.map(function(b,i){
+    return '<div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:8px">'+
+      '<div style="flex:1"><label style="'+lbl+'">Name</label><input style="'+inp+'" value="'+b.n.replace(/"/g,'&quot;')+'" oninput="S.editBowlers['+i+'].n=this.value"></div>'+
+      '<div style="width:50px"><label style="'+lbl+'">O</label><input style="'+inpSm+'" type="number" min="0" step="0.1" value="'+b.o+'" oninput="S.editBowlers['+i+'].o=+this.value"></div>'+
+      '<div style="width:50px"><label style="'+lbl+'">R</label><input style="'+inpSm+'" type="number" min="0" value="'+b.r+'" oninput="S.editBowlers['+i+'].r=+this.value"></div>'+
+      '<div style="width:44px"><label style="'+lbl+'">W</label><input style="'+inpSm+'" type="number" min="0" value="'+b.w+'" oninput="S.editBowlers['+i+'].w=+this.value"></div>'+
+      '<button onclick="removeEditBowler('+i+')" style="border:none;background:#fce4e4;color:#c0392b;border-radius:7px;padding:0 8px;cursor:pointer;font-size:16px;height:36px;flex-shrink:0;align-self:flex-end">✕</button>'+
+    '</div>';
+  }).join('');
+  return '<div style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-end" onclick="S.showEditInn=false;render()">'+
+    '<div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-height:90vh;overflow-y:auto;padding-bottom:max(20px,env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
+      '<div style="display:flex;align-items:center;padding:16px 16px 14px;border-bottom:1px solid #eee;position:sticky;top:0;background:#fff;z-index:1">'+
+        '<div style="font-size:17px;font-weight:800;flex:1">Edit Innings</div>'+
+        '<span onclick="S.showEditInn=false;render()" style="font-size:26px;color:#bbb;cursor:pointer;line-height:1;padding:2px 4px">&times;</span>'+
+      '</div>'+
+      '<div style="padding:0 16px 20px">'+
+        '<div style="'+secHdr+'">Batters</div>'+
+        batRows+
+        '<button onclick="addEditBatter()" style="width:100%;padding:10px;border:1.5px dashed #ccc;border-radius:8px;background:#fafafa;color:#666;font-size:14px;cursor:pointer;margin-bottom:4px">+ Add Batter</button>'+
+        '<div style="'+secHdr+'">Extras</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:4px">'+
+          '<div><label style="'+lbl+'">Wides</label><input style="'+inpSm+'" type="number" min="0" value="'+S.editXtraW+'" oninput="S.editXtraW=+this.value"></div>'+
+          '<div><label style="'+lbl+'">Byes</label><input style="'+inpSm+'" type="number" min="0" value="'+S.editXtraB+'" oninput="S.editXtraB=+this.value"></div>'+
+          '<div><label style="'+lbl+'">Leg B</label><input style="'+inpSm+'" type="number" min="0" value="'+S.editXtraLb+'" oninput="S.editXtraLb=+this.value"></div>'+
+          '<div><label style="'+lbl+'">No Balls</label><input style="'+inpSm+'" type="number" min="0" value="'+S.editXtraNb+'" oninput="S.editXtraNb=+this.value"></div>'+
+        '</div>'+
+        '<div style="'+secHdr+'">Totals</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:4px">'+
+          '<div><label style="'+lbl+'">Runs</label><input style="'+inpSm+'" type="number" min="0" value="'+S.editTotal+'" oninput="S.editTotal=+this.value"></div>'+
+          '<div><label style="'+lbl+'">Wkts</label><input style="'+inpSm+'" type="number" min="0" max="7" value="'+S.editWkts+'" oninput="S.editWkts=+this.value"></div>'+
+          '<div><label style="'+lbl+'">Overs</label><input style="'+inpSm+'" value="'+S.editOvers+'" oninput="S.editOvers=this.value"></div>'+
+          '<div><label style="'+lbl+'">Bonus</label><input style="'+inpSm+'" type="number" min="0" value="'+S.editBonus+'" oninput="S.editBonus=+this.value"></div>'+
+        '</div>'+
+        '<div style="'+secHdr+'">Bowlers</div>'+
+        bowlRows+
+        '<button onclick="addEditBowler()" style="width:100%;padding:10px;border:1.5px dashed #ccc;border-radius:8px;background:#fafafa;color:#666;font-size:14px;cursor:pointer;margin-bottom:16px">+ Add Bowler</button>'+
+        (S.editSaveError?'<div style="color:#c0392b;font-size:13px;margin-bottom:10px;font-weight:600">'+S.editSaveError+'</div>':'')+
+        '<button onclick="saveEditInn()" '+(S.editSaving?'disabled':'')+' style="width:100%;padding:14px;background:#1a5e36;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:800;cursor:pointer;opacity:'+(S.editSaving?'.6':'1')+'">'+(S.editSaving?'Saving…':'Save Changes')+'</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
 function saveNav(){
   try{sessionStorage.setItem('wpc-nav',JSON.stringify({view:S.view,mid:S.mid,tab:S.tab,inn:S.inn}));}catch(e){}
 }
@@ -1576,7 +1673,8 @@ function render(){
       '</div>'
     );
   }
-  app.innerHTML=(S.view==='list'?hList():hDetail(S.mid))+deleteModal;
+  var editInnModal=S.showEditInn?hEditInnModal():'';
+  app.innerHTML=(S.view==='list'?hList():hDetail(S.mid))+deleteModal+editInnModal;
 }
 // ── loadData: fetch from Supabase, assemble M, then render ──
 function loadData(){
