@@ -362,7 +362,7 @@ var M_SEED = [
 var M=M_SEED.slice();
 
 // ── state ──
-var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null,hubFiles:null,hubFilesLoading:false,hubUploadError:'',amTeam1:'',amTeam2:'',showEditInn:false,editInnId:null,editBatters:[],editBowlers:[],editXtraW:0,editXtraB:0,editXtraLb:0,editXtraNb:0,editTotal:0,editWkts:0,editOvers:'0',editBonus:0,editSaving:false,editSaveError:''};
+var S={view:'list',mid:null,tab:'summary',inn:0,docFile:null,showAddDoc:false,showAddMatch:false,addMatchError:'',newTeam1:false,newTeam2:false,amRnd:'',amDate:'',amTime:'08:00',amVenue:'',showDeleteConfirm:false,deleteMid:null,deletePin:'',deletePinError:'',showSyncModal:false,syncLoading:false,syncResult:null,statBat:true,statBowl:false,listTab:'fixture',showEditResult:false,editResultMid:null,hubFiles:null,hubFilesLoading:false,hubUploadError:'',amTeam1:'',amTeam2:'',showEditInnPin:false,editInnPinVal:'',editInnPinError:'',pendingEditInnId:null,showEditInn:false,editInnId:null,editBatters:[],editBowlers:[],editXtraW:0,editXtraB:0,editXtraLb:0,editXtraNb:0,editTotal:0,editWkts:0,editOvers:'0',editBonus:0,editSaving:false,editSaveError:''};
 var PLAYHQ_DEFAULT_URL='https://www.playhq.com/cricket-australia/org/wpc-cricket-club/7b159ec9/msw-pre-christmas-junior-competition-summer-202627/teams/wpc-teal/6bed293c';
 
 var KNOWN_TEAMS=[
@@ -889,7 +889,7 @@ function hDetail(mid){
     '<div class="pb">'+bodyHtml+
       (m.status==='completed'&&hasInn&&S.tab==='summary'?
         '<div style="padding:16px 16px 4px">'+
-          '<button onclick="openEditInn('+m.innings[S.inn].id+')" style="width:100%;padding:13px;background:#e8f5e9;color:#1a5e36;border:1.5px solid #a5d6a7;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Edit Innings '+(S.inn+1)+' Data</button>'+
+          '<button onclick="promptEditInnPin('+m.innings[S.inn].id+')" style="width:100%;padding:13px;background:#e8f5e9;color:#1a5e36;border:1.5px solid #a5d6a7;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Edit Innings '+(S.inn+1)+' Data</button>'+
         '</div>':'')+
       '<div style="padding:12px 0 8px;text-align:center">'+
         '<button onclick="deleteMatch('+m.id+')" style="background:none;border:none;color:#ccc;font-size:12px;cursor:pointer;text-decoration:underline">Delete match</button>'+
@@ -1555,6 +1555,14 @@ async function deleteHubFile(path){
 function setInn(i){S.inn=i;render();}
 
 // ── Edit Innings ──
+function promptEditInnPin(innId){
+  S.showEditInnPin=true;S.editInnPinVal='';S.editInnPinError='';S.pendingEditInnId=innId;render();
+}
+function confirmEditInnPin(){
+  if(S.editInnPinVal!=='4321'){S.editInnPinError='Wrong PIN. Try again.';render();return;}
+  S.showEditInnPin=false;
+  openEditInn(S.pendingEditInnId);
+}
 function openEditInn(innId){
   var m=getM(S.mid);
   if(!m||!m.innings)return;
@@ -1673,8 +1681,25 @@ function render(){
       '</div>'
     );
   }
+  var editInnPinModal=S.showEditInnPin?(
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px" onclick="S.showEditInnPin=false;render()">'+
+      '<div style="background:#fff;border-radius:16px;padding:24px 20px;width:100%;max-width:340px" onclick="event.stopPropagation()">'+
+        '<div style="font-size:17px;font-weight:800;margin-bottom:6px">Edit Innings</div>'+
+        '<div style="font-size:14px;color:#555;margin-bottom:16px">Enter the admin PIN to edit innings data.</div>'+
+        '<div style="margin-bottom:12px">'+
+          '<label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">PIN</label>'+
+          '<input id="edit-inn-pin" type="password" inputmode="numeric" style="width:100%;border:1.5px solid '+(S.editInnPinError?'#c0392b':'#ddd')+';border-radius:8px;padding:10px 12px;font-size:22px;letter-spacing:6px;box-sizing:border-box" placeholder="••••" maxlength="4" oninput="S.editInnPinVal=this.value;S.editInnPinError=\'\'" onkeydown="if(event.key===\'Enter\')confirmEditInnPin()">'+
+          (S.editInnPinError?'<div style="color:#c0392b;font-size:12px;margin-top:4px;font-weight:600">'+S.editInnPinError+'</div>':'')+
+        '</div>'+
+        '<div style="display:flex;gap:10px">'+
+          '<button onclick="S.showEditInnPin=false;render()" style="flex:1;padding:12px;border-radius:10px;border:none;background:#f0f0f0;font-size:15px;font-weight:700;cursor:pointer">Cancel</button>'+
+          '<button onclick="confirmEditInnPin()" style="flex:1;padding:12px;border-radius:10px;border:none;background:#1a5e36;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Unlock</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'
+  ):'';
   var editInnModal=S.showEditInn?hEditInnModal():'';
-  app.innerHTML=(S.view==='list'?hList():hDetail(S.mid))+deleteModal+editInnModal;
+  app.innerHTML=(S.view==='list'?hList():hDetail(S.mid))+deleteModal+editInnPinModal+editInnModal;
 }
 // ── loadData: fetch from Supabase, assemble M, then render ──
 function loadData(){
